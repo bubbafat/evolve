@@ -53,6 +53,8 @@ namespace evolvecli
         {
             renderFrame();
             
+            path.Directory.Create();
+            
             using (var stream = path.OpenWrite())
             using (var snapshot = _surface.Snapshot())
             using (var data = snapshot.Encode(SKEncodedImageFormat.Png, 90))
