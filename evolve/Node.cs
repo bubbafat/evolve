@@ -1,3 +1,5 @@
+using System;
+
 namespace evolve
 {
     public class Node
@@ -6,7 +8,10 @@ namespace evolve
         {
             World = world;
             Location = Location.InvalidLocation;
+            Id = Guid.NewGuid();
         }
+        
+        public Guid Id { get; private set; }
         
         public World World { get; private set; }
         public Location Location { get; set; }

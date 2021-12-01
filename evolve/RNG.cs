@@ -53,13 +53,13 @@ namespace evolve
             {
                 lock (_lock)
                 {
-                    result = _rng.NextSingle();
+                    result = (float)_rng.NextDouble();
                     
                     if (_floats.IsEmpty)
                     {
                         for (int i = 0; i < CacheLimit; i++)
                         {
-                            _floats.Enqueue(_rng.NextSingle());
+                            _floats.Enqueue((float)_rng.NextDouble());
                         }
                     }
                 }
