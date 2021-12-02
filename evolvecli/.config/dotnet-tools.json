@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "jetbrains.dottrace.globaltools": {
+      "version": "2021.2.2",
+      "commands": [
+        "dottrace"
+      ]
+    }
+  }
+}

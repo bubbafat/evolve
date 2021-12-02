@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -26,8 +27,10 @@ namespace evolvecli
 
         public void Run()
         {
+            int highWaterMark = 0;
+            
             for (Simulation.CurrentGeneration = 1;
-                Simulation.CurrentGeneration < Simulation.Generations;
+                Simulation.CurrentGeneration <= Simulation.Generations;
                 Simulation.CurrentGeneration++)
             {
                 Console.Write($"Generation {Simulation.CurrentGeneration} ");
@@ -47,7 +50,7 @@ namespace evolvecli
                 {
                     step(render);
                 }
-
+                
                 _world.RemoveIf(n => !inBreedingGrounds(n.Location));
 
                 if (render)
@@ -60,18 +63,50 @@ namespace evolvecli
                     return;
                 }
 
-                int survived = _world.Nodes.Count();
+                var survivors = _world.Nodes.ToList();
+                int survived = survivors.Count;
+                if (highWaterMark < survived || render)
+                {
+                    highWaterMark = survived;
+                    
+                    var common = survivors
+                        .GroupBy(n => n.Fingerprint())
+                        .OrderByDescending(g => g.Count())
+                        .Take(2);
+
+                    int rank = 1;
+                    foreach (var c in common)
+                    {
+                        Console.WriteLine("-----");
+                        Console.WriteLine($"{rank++}: {c.Count()}/{survivors.Count}");
+                        Console.WriteLine(c.First().Description());
+                    }
+
+                }
 
                 double survivalRatio = (float) survived / (float) Simulation.TotalNodes;
                 _thresholdExceeded = survivalRatio >= Simulation.SuccessThreshold;
 
                 Console.WriteLine($"{survived} survived ({survivalRatio}%)");
+                
+                var children = reproduce(survivors);
+                _world.Clear();
+                _world.AddAtRandom(children);
+            }
+        }
+
+        private IEnumerable<Node> reproduce(List<Node> survivers)
+        {
+            for (int i = 0; i < Simulation.TotalNodes; i++)
+            {
+                yield return survivers.Random().Reproduce(survivers.Random());
             }
         }
 
         private void renderFrame(int gen, int step)
         {
             _board.ExportFrame(new FileInfo($"gen-{gen}{Path.DirectorySeparatorChar}frame-{step}.png"));
+            Console.Write(".");
         }
 
         private void step(bool render)

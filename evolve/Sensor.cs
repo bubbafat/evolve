@@ -2,41 +2,28 @@ using System;
 
 namespace evolve
 {
-    public enum SensorIds
+    [Flags]
+    public enum SensorType
     {
-        Random
+        DistanceFromNorth = (1 << 1),
+        DistanceFromSouth = (1 << 2),
+        DistanceFromEast  = (1 << 3),
+        DistanceFromWest  = (1 << 4),
     }
-
-    public struct SensorTypes
-    {
-        public readonly SensorIds Type;
-        public readonly Guid Id;
-
-        public SensorTypes(SensorIds type)
-        {
-            Type = type;
-            Id = Guid.NewGuid();
-        }
-    }
-
-    public static class Sensors
-    {
-        public static SensorTypes Random = new SensorTypes(SensorIds.Random);
-    }
-    
     
     public class Sensor : ISensor
     {
-        private readonly SensorTypes _type;
+        private readonly SensorType _type;
 
-        public Sensor(SensorTypes type)
+        public Sensor(SensorType type)
         {
             _type = type;
         }
+        
 
         private float readWeight(Node node)
         {
-            return node.World.ReadSensor(_type.Type, node.Location);
+            return node.World.ReadSensor(_type, node.Location);
         }
         
         public float Activate(Node node)
@@ -44,9 +31,16 @@ namespace evolve
             return Simulation.ActivationFunction(readWeight(node));
         }
 
-        public override int GetHashCode()
+        public SensorType Type => _type;
+
+        public int Fingerprint()
         {
-            return _type.Id.GetHashCode();
+            return (int)_type;
+        }
+
+        public string Description()
+        {
+            return $"Sensor ({_type})";
         }
     }
 }

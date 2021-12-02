@@ -10,6 +10,8 @@ namespace evolve
         public static int Int() => _rng.Int();
         public static float Float() => _rng.Float();
         public static bool Bool() => _rng.Bool();
+
+        public static int Int(int max) => _rng.Int() % max;
     }
     public class RandomGenerator
     {
@@ -17,12 +19,11 @@ namespace evolve
         private readonly ConcurrentQueue<int> _ints = new ConcurrentQueue<int>();
         private readonly ConcurrentQueue<float> _floats = new ConcurrentQueue<float>();
         private const int CacheLimit = 10000;
-        private object _lock = new object();
+        private readonly object _lock = new object();
 
         public int Int()
         {
-            int result;
-            if (!_ints.TryDequeue(out result))
+            if (!_ints.TryDequeue(out var result))
             {
                 lock (_lock)
                 {
@@ -48,8 +49,7 @@ namespace evolve
 
         public float Float()
         {
-            float result;
-            if (!_floats.TryDequeue(out result))
+            if (!_floats.TryDequeue(out var result))
             {
                 lock (_lock)
                 {

@@ -49,6 +49,11 @@ namespace evolve
             return onBoard(loc.X, loc.Y);
         }
 
+        public void Clear()
+        {
+            RemoveIf(n => true);
+        }
+
         public bool TryGetAt(Location loc, out Node? node)
         {
             if (onBoard(loc) && hasNode(loc))
@@ -105,15 +110,9 @@ namespace evolve
             return loc;
         }
         
-        public void MoveNodeAt(Location from, Location to)
+        public bool MoveNodeAt(Location from, Location to)
         {
-            if (!onBoard(from) || !onBoard(to))
-                return;
-
-            if (hasNode(to))
-                return;
-            
-            if (TryGetAt(from, out Node? node))
+            if (onBoard(to) && !hasNode(to) && TryGetAt(from, out Node? node))
             {
                 if (node == null)
                     throw new NotSupportedException("BUG!!  Node can't be null");
@@ -121,7 +120,11 @@ namespace evolve
                 _grid[from.X, from.Y] = null;
                 _grid[to.X, to.Y] = node;
                 node.Location = to;
+
+                return true;
             }
+
+            return false;
         }
 
         public void AddAtRandom(Node node)
@@ -131,32 +134,32 @@ namespace evolve
             _nodes.Add(node);
         }
 
+        public void AddAtRandom(IEnumerable<Node> nodes)
+        {
+            foreach (var n in nodes)
+            {
+                AddAtRandom(n);
+            }
+        }
+
         public void RemoveNode(Node node)
         {
             _grid[node.Location.X, node.Location.Y] = null;
             _nodes.RemoveAll(n => n.Id == node.Id);
         }
 
-        public float ReadSensor(SensorIds type, Location location)
+        public float ReadSensor(SensorType type, Location location)
         {
             return type switch
             {
-                SensorIds.Random => RNG.Float(),
+                SensorType.DistanceFromNorth => 1f - (float)location.Y / (float)Dimension,
+                SensorType.DistanceFromSouth => (float)location.Y / (float)Dimension,
+                SensorType.DistanceFromWest => 1f - (float)location.X / (float)Dimension,
+                SensorType.DistanceFromEast => (float)location.X / (float)Dimension,
                 _ => throw new NotSupportedException("Invalid SensorType")
             };
         }
-
-        public IEnumerable<Node> Partition(Predicate<Node> func)
-        {
-            foreach (Node node in _nodes)
-            {
-                if (func(node))
-                {
-                    yield return node;
-                }
-            }
-        }
-
+        
         public int RemoveIf(Predicate<Node> filter)
         {
             var toRemove = _nodes.Where(n => filter(n)).ToList();

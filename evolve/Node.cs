@@ -24,24 +24,39 @@ namespace evolve
             _genome.Execute(this);
         }
 
-        public void MoveRandom()
+        public bool MoveRandom()
         {
-            Move(World.RandomEmptyNeighbor(Location));
+            return Move(World.RandomEmptyNeighbor(Location));
         }
 
-        public void Move(Location target)
+        public bool Move(Location target)
         {
-            World.MoveNodeAt(Location, target);
+            return World.MoveNodeAt(Location, target);
         }
 
         public void Reset()
         {
             _genome.Reset();
         }
+
+        public Node Reproduce(Node other)
+        {
+            return new Node(this.World, _genome.Reproduce(other._genome));
+        }
+
+        public string Description()
+        {
+            return _genome.Description();
+        }
         
         public Guid Id { get; private set; }
         
         public World World { get; private set; }
         public Location Location { get; set; }
+
+        public int Fingerprint()
+        {
+            return _genome.Fingerprint();
+        }
     }
 }

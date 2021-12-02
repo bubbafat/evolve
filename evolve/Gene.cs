@@ -1,24 +1,22 @@
 using System;
+using System.Text;
 
 namespace evolve
 {
     public class Gene : IComparable<Gene>
     {
-        private readonly IActivatable _source;
-        private readonly ISink _sink;
-
-        public IActivatable Source => _source;
-        public ISink Sink => _sink;
+        public IActivatable Source { get; internal set; }
+        public ISink Sink { get; set; }
 
         public Gene(IActivatable source, ISink sink)
         {
-            _source = source;
-            _sink = sink;
+            Source = source;
+            Sink = sink;
         }
-
+        
         public void Evaluate(Node node)
         {
-            _sink.UpdateWeight(_source.Activate(node));
+            Sink.UpdateWeight(Source.Activate(node));
         }
 
         private int sortValue()
@@ -42,7 +40,8 @@ namespace evolve
 
         public void Reset()
         {
-            _sink.Reset();
+            (Source as ISink)?.Reset();
+            Sink.Reset();
         }
         
         public int CompareTo(Gene other)
@@ -50,9 +49,22 @@ namespace evolve
             return sortValue().CompareTo(other.sortValue());
         }
 
-        public override int GetHashCode()
+        public int Fingerprint()
         {
-            return Source.GetHashCode() + Sink.GetHashCode();
+            return Source.Fingerprint() | Sink.Fingerprint();
+        }
+
+        public string Description()
+        {
+            StringBuilder sb = new StringBuilder();
+            return $"{Source.Description()} -> {Sink.Description()}";
+
+        }
+
+        public void Mutate()
+        {
+            (Source as IInnerNeuron)?.Mutate();
+            Sink.Mutate();
         }
     }
 }

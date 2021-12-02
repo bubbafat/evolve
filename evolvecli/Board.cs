@@ -37,10 +37,10 @@ namespace evolvecli
                 n.Location.X * CellMultiple + NodeRadius,
                 n.Location.Y * CellMultiple + NodeRadius);
 
-            int paintKey = n.GetHashCode();
+            int paintKey = n.Fingerprint();
             if (!_paintCache.TryGetValue(paintKey, out SKPaint paint))
             {
-                var bytes = BitConverter.GetBytes(n.GetHashCode());
+                var bytes = BitConverter.GetBytes(paintKey);
                 SKColor color = new SKColor(bytes[0], bytes[1], bytes[2]);
 
                 paint = new SKPaint
