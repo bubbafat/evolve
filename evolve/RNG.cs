@@ -13,6 +13,7 @@ namespace evolve
 
         public static int Int(int max) => _rng.Int() % max;
     }
+
     public class RandomGenerator
     {
         private readonly Random _rng = new Random();
@@ -28,7 +29,7 @@ namespace evolve
                 lock (_lock)
                 {
                     result = _rng.Next();
-                    
+
                     if (_ints.IsEmpty)
                     {
                         for (int i = 0; i < CacheLimit; i++)
@@ -41,7 +42,7 @@ namespace evolve
 
             return result;
         }
-        
+
         public bool Bool()
         {
             return Float() < 0.5f;
@@ -53,13 +54,13 @@ namespace evolve
             {
                 lock (_lock)
                 {
-                    result = (float)_rng.NextDouble();
-                    
+                    result = (float) _rng.NextDouble();
+
                     if (_floats.IsEmpty)
                     {
                         for (int i = 0; i < CacheLimit; i++)
                         {
-                            _floats.Enqueue((float)_rng.NextDouble());
+                            _floats.Enqueue((float) _rng.NextDouble());
                         }
                     }
                 }

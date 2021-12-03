@@ -5,41 +5,43 @@ namespace evolve
     [Flags]
     public enum ActionType
     {
-        MoveNorth  = (1 << 13),
-        MoveSouth  = (1 << 14),
-        MoveEast   = (1 << 15),
-        MoveWest   = (1 << 16),
+        StayPut = (1 << 12),
+        MoveNorth = (1 << 13),
+        MoveSouth = (1 << 14),
+        MoveEast = (1 << 15),
+        MoveWest = (1 << 16),
         MoveNorthEast = (1 << 17),
         MoveNorthWest = (1 << 18),
         MoveSouthEast = (1 << 19),
         MoveSouthWest = (1 << 20),
+        MoveRandom = (1 << 21),
     }
 
     public class Action : IAction
     {
-        private readonly ActionType _type;
         private float _weight;
-        private float _initialWeight;
-
+        
         public Action(ActionType type, float initialWeight)
         {
-            _initialWeight = 0f;
-            _type = type;
-            _weight = _initialWeight;
+            Type = type;
+            _weight = InitialWeight;
+            Id = Guid.NewGuid();
         }
 
-        public float InitialWeight => _initialWeight;
+        public Guid Id { get; }
         
+        public float InitialWeight => 0f;
+
         public void UpdateWeight(float weight)
         {
             _weight += weight;
         }
 
         public float Weight => _weight;
-
+        
         public void Reset()
         {
-            _weight = _initialWeight;
+            _weight = InitialWeight;
         }
 
         public bool Act(Node node)
@@ -48,16 +50,18 @@ namespace evolve
 
             if (act)
             {
-                return _type switch
+                return Type switch
                 {
+                    ActionType.StayPut => true,
+                    ActionType.MoveRandom => node.MoveRandom(),
                     ActionType.MoveNorth => node.Move(node.Location.North()),
                     ActionType.MoveSouth => node.Move(node.Location.South()),
                     ActionType.MoveEast => node.Move(node.Location.East()),
                     ActionType.MoveWest => node.Move(node.Location.West()),
-                    ActionType.MoveNorthEast => node.Move(node.Location.North()) | node.Move(node.Location.East()),
-                    ActionType.MoveNorthWest => node.Move(node.Location.North()) | node.Move(node.Location.West()),
-                    ActionType.MoveSouthEast => node.Move(node.Location.South()) | node.Move(node.Location.East()),
-                    ActionType.MoveSouthWest => node.Move(node.Location.South()) | node.Move(node.Location.West()),
+                    ActionType.MoveNorthEast => node.Move(node.Location.NorthEast()),
+                    ActionType.MoveNorthWest => node.Move(node.Location.NorthWest()),
+                    ActionType.MoveSouthEast => node.Move(node.Location.SouthEast()),
+                    ActionType.MoveSouthWest => node.Move(node.Location.SouthWest()),
                     _ => throw new NotSupportedException("Invalid action")
                 };
             }
@@ -65,32 +69,27 @@ namespace evolve
             return false;
         }
 
-        public ActionType Type => _type;
+        public ActionType Type { get; }
 
         public int Fingerprint()
         {
-            return (int) _type;
+            return (int) Type;
         }
-        
+
         public string Description()
         {
-            return $"Action ({Simulation.ActivationFunction(_weight)} - {_type})";
+            return $"Action ({Simulation.ActivationFunction(_weight)} - {Type} - {Id})";
         }
-        
-        public void Mutate()
+
+        public ISink Mutate()
         {
-            if (Simulation.WeightToBool(0.001f))
-            {
-                var up = RNG.Bool();
-                if (up)
-                {
-                    _initialWeight += RNG.Float() * (1f - _initialWeight);
-                }
-                else
-                {
-                    _initialWeight *= RNG.Float();
-                }
-            }
+            // actions don't mutate
+            return this;
+        }
+
+        public ISink DeepCopy()
+        {
+            return new Action(Type, InitialWeight);
         }
     }
 }

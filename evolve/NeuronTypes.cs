@@ -4,15 +4,23 @@ namespace evolve
 {
     public interface IDescribable
     {
+        public Guid Id { get; }
+
         public string Description();
         public int Fingerprint();
     }
+
     public interface IIdentifiable<TType>
     {
         public TType Type { get; }
     }
-    
-    public interface IActivatable : IDescribable
+
+    public interface ICopyable<T>
+    {
+        public T DeepCopy();
+    }
+
+    public interface IActivatable : IDescribable, ICopyable<IActivatable>
     {
         public float Activate(Node node);
     }
@@ -20,10 +28,10 @@ namespace evolve
     public interface ISensor : IActivatable, IIdentifiable<SensorType>
     {
     }
-    
-    public interface ISink : IDescribable
+
+    public interface ISink : IDescribable, ICopyable<ISink>
     {
-        public void Mutate();
+        public ISink Mutate();
         public float InitialWeight { get; }
         public void UpdateWeight(float weight);
         public void Reset();

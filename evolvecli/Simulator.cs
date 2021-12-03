@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net;
+using System.Threading.Tasks;
 using evolve;
 
 namespace evolvecli
@@ -12,8 +12,7 @@ namespace evolvecli
     {
         private readonly World _world;
         private readonly Board _board;
-        private bool _thresholdExceeded = false;
-        
+
         public Simulator(World world, Board board)
         {
             _world = world;
@@ -25,6 +24,22 @@ namespace evolvecli
             return (loc.X < 10);
         }
 
+        private void endGeneration()
+        {
+            Console.WriteLine();
+            Console.WriteLine($"Eval times: {EvalTimer.ElapsedMilliseconds}");
+            Console.WriteLine($"Exec times: {ExecTimer.ElapsedMilliseconds}");
+            Console.WriteLine($"Step times: {StepTimer.ElapsedMilliseconds}");
+            Console.WriteLine($"Repro times: {ReproTimer.ElapsedMilliseconds}");
+            Console.WriteLine($"Child times: {AddChildrenTimer.ElapsedMilliseconds}");
+            
+            EvalTimer.Reset();
+            ExecTimer.Reset();
+            ReproTimer.Reset();
+            StepTimer.Reset();
+            AddChildrenTimer.Reset();
+        }
+
         public void Run()
         {
             int highWaterMark = 0;
@@ -33,39 +48,39 @@ namespace evolvecli
                 Simulation.CurrentGeneration <= Simulation.Generations;
                 Simulation.CurrentGeneration++)
             {
-                Console.Write($"Generation {Simulation.CurrentGeneration} ");
+                Console.WriteLine($"Generation {Simulation.CurrentGeneration}");
+                
+                _world.BeginStep();
 
-                bool render = Simulation.CurrentGeneration == 1
-                              || Simulation.CurrentGeneration == Simulation.Generations
-                              || _thresholdExceeded;
 
-                if (render)
-                {
-                    Console.Write("(rendering) ");
-                }
-
+                StepTimer.Start();
                 for (Simulation.CurrentStep = 1;
                     Simulation.CurrentStep < Simulation.StepsPerGeneration;
                     Simulation.CurrentStep++)
                 {
-                    step(render);
+                    //renderFrame();
+                    
+                    step();
+                    
+                    _world.EndStep();
                 }
+                StepTimer.Stop();
+
+                renderFrame();
+
+                
+                EvalTimer.Start();
                 
                 _world.RemoveIf(n => !inBreedingGrounds(n.Location));
-
-                if (render)
-                {
-                    renderFrame(Simulation.CurrentGeneration, Simulation.CurrentStep);
-                }
-
-                if (_thresholdExceeded)
+                
+                if (Simulation.WinThresholdExceeded)
                 {
                     return;
                 }
 
                 var survivors = _world.Nodes.ToList();
                 int survived = survivors.Count;
-                if (highWaterMark < survived || render)
+                if (highWaterMark < survived || Simulation.RenderFrame)
                 {
                     highWaterMark = survived;
                     
@@ -85,50 +100,61 @@ namespace evolvecli
                 }
 
                 double survivalRatio = (float) survived / (float) Simulation.TotalNodes;
-                _thresholdExceeded = survivalRatio >= Simulation.SuccessThreshold;
+                Simulation.WinThresholdExceeded = survivalRatio >= Simulation.SuccessThreshold;
 
                 Console.WriteLine($"{survived} survived ({survivalRatio}%)");
                 
                 var children = reproduce(survivors);
+
                 _world.Clear();
                 _world.AddAtRandom(children);
+
+                EvalTimer.Stop();
+                
+                endGeneration();
             }
         }
 
         private IEnumerable<Node> reproduce(List<Node> survivers)
         {
-            for (int i = 0; i < Simulation.TotalNodes; i++)
-            {
-                yield return survivers.Random().Reproduce(survivers.Random());
-            }
-        }
+            ReproTimer.Start();
+            Node[] output = new Node[Simulation.TotalNodes];
 
-        private void renderFrame(int gen, int step)
-        {
-            _board.ExportFrame(new FileInfo($"gen-{gen}{Path.DirectorySeparatorChar}frame-{step}.png"));
-            Console.Write(".");
-        }
+            Parallel.For(0, Simulation.TotalNodes,
+                (i, state) => { output[i] = survivers.Random().Reproduce(survivers.Random()); });
 
-        private void step(bool render)
-        {
-            foreach (var node in _world.Nodes)
-            {
-                node.Reset();
-            }
-
-            foreach (var node in _world.Nodes)
-            {
-                node.Evaluate();
-            }
+            ReproTimer.Stop();
             
+            return output;
+        }
+
+        private void renderFrame()
+        {
+            if (Simulation.RenderFrame)
+            {
+                int gen = Simulation.CurrentGeneration;
+                int step = Simulation.CurrentStep;
+
+                _board.ExportFrame(new FileInfo($"gen-{gen}{Path.DirectorySeparatorChar}frame-{step}.png"));
+                Console.Write(".");
+            }
+        }
+
+        public static readonly Stopwatch EvalTimer = new Stopwatch();
+        public static readonly Stopwatch ExecTimer = new Stopwatch();
+        public static readonly Stopwatch ReproTimer = new Stopwatch();
+        public static readonly Stopwatch StepTimer = new Stopwatch();
+        public static readonly Stopwatch AddChildrenTimer = new Stopwatch();
+
+        private void step()
+        {
+            _world.Nodes.AsParallel().ForAll(n => n.Reset());
+            
+            _world.Nodes.AsParallel().ForAll(n => n.Evaluate());
+
             foreach (var node in _world.Nodes)
             {
                 node.Execute();
-            }
-            
-            if (render)
-            {
-                renderFrame(Simulation.CurrentGeneration, Simulation.CurrentStep);
             }
         }
     }

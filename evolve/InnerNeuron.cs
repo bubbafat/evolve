@@ -4,52 +4,48 @@ namespace evolve
 {
     public class InnerNeuron : IInnerNeuron
     {
-        private float _initialWeight;
         private float _weight;
-        private readonly Guid _id;
 
         public InnerNeuron(float initialWeight)
         {
-            _id = Guid.NewGuid();
-            _initialWeight = Simulation.ActivationFunction(RNG.Float());
+            Id = Guid.NewGuid();
+            InitialWeight = Simulation.ActivationFunction(RNG.Float());
             _weight = initialWeight;
         }
-
-        public void Mutate()
-        {
-            if (Simulation.WeightToBool(0.001f))
-            {
-                var up = RNG.Bool();
-                if (up)
-                {
-                    _initialWeight += RNG.Float() * (1f - _initialWeight);
-                }
-                else
-                {
-                    _initialWeight *= RNG.Float();
-                }
-            }
-        }
         
+        public ISink Mutate()
+        {
+            if (Simulation.WeightToBool(Simulation.MutationChance))
+            {
+                var mutateUp = RNG.Bool();
+                
+                InitialWeight = (mutateUp)
+                    ? RNG.Float() * (1f - InitialWeight)
+                    : RNG.Float();
+            }
+
+            return this;
+        }
+
         public float Activate(Node node)
         {
             return Simulation.ActivationFunction(_weight);
         }
 
-        public float InitialWeight => _initialWeight;
+        public float InitialWeight { get; private set; }
 
         public void UpdateWeight(float weight)
         {
             _weight += weight;
         }
-        
-        public Guid Id => _id;
+
+        public Guid Id { get; }
 
         public void Reset()
         {
-            _weight = _initialWeight;
+            _weight = InitialWeight;
         }
-        
+
         public int Fingerprint()
         {
             return 0;
@@ -57,7 +53,17 @@ namespace evolve
 
         public string Description()
         {
-            return $"InnerNeuron ({Activate(null)} - {Id})";
+            return $"InnerNeuron ({Activate(null!)} - {Id})";
+        }
+
+        IActivatable ICopyable<IActivatable>.DeepCopy()
+        {
+            return new InnerNeuron(InitialWeight);
+        }
+
+        ISink ICopyable<ISink>.DeepCopy()
+        {
+            return new InnerNeuron(InitialWeight);
         }
     }
 }

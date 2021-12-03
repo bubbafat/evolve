@@ -7,13 +7,18 @@ namespace evolve
     {
         public IActivatable Source { get; internal set; }
         public ISink Sink { get; set; }
-
+        
         public Gene(IActivatable source, ISink sink)
         {
             Source = source;
             Sink = sink;
         }
-        
+
+        public Gene DeepCopy()
+        {
+            return new Gene(Source.DeepCopy(), Sink.DeepCopy());
+        }
+
         public void Evaluate(Node node)
         {
             Sink.UpdateWeight(Source.Activate(node));
@@ -22,20 +27,30 @@ namespace evolve
         private int sortValue()
         {
             // sensor -> sink = 1
-            // inner -> inner = 2
+            // inner -> inner (same) = 2
+            // inner -> inner (different)
             // inner -> action = 3
 
             if (Source is ISensor)
             {
                 return 1;
             }
-
-            if (Sink is IInnerNeuron)
+            
+            // inner -> inner (same)
+            // can't be sensor -> inner because we removed sensors already
+            if (Sink is IInnerNeuron && Source.Id == Sink.Id)
             {
                 return 2;
             }
 
-            return 3;
+            // inner -> inner (different)
+            if (Sink is InnerNeuron)
+            {
+                return 3;
+            }
+            
+            // inner -> action
+            return 4;
         }
 
         public void Reset()
@@ -43,7 +58,7 @@ namespace evolve
             (Source as ISink)?.Reset();
             Sink.Reset();
         }
-        
+
         public int CompareTo(Gene other)
         {
             return sortValue().CompareTo(other.sortValue());
@@ -58,13 +73,14 @@ namespace evolve
         {
             StringBuilder sb = new StringBuilder();
             return $"{Source.Description()} -> {Sink.Description()}";
-
         }
-
-        public void Mutate()
+        
+        public Gene Mutate()
         {
             (Source as IInnerNeuron)?.Mutate();
             Sink.Mutate();
+
+            return this;
         }
     }
 }

@@ -27,8 +27,31 @@ namespace evolvecli
             _paintCache = new Dictionary<int, SKPaint>();
             _zoneColor = new SKPaint
             {
-                Color = SKColors.Red
+                Color = SKColors.Red.WithAlpha(50)
             };
+        }
+
+        static readonly SKPaint wallPaint = new SKPaint
+        {
+            Color = SKColors.Gray,
+            Style = SKPaintStyle.Fill
+        };
+
+        private void renderZone()
+        {
+            SKRect rect = new SKRect(0, 0, 10 * CellMultiple,  128 * CellMultiple);
+            
+            _canvas.DrawRect(rect, _zoneColor);
+        }
+
+        private void renderWall(Location loc)
+        {
+            float x = loc.X * CellMultiple;
+            float y = loc.Y * CellMultiple;
+
+            SKRect rect = new SKRect(x, y, x + CellMultiple, y + CellMultiple);
+            
+            _canvas.DrawRect(rect, wallPaint);
         }
         
         private void renderNode(Node n)
@@ -58,10 +81,18 @@ namespace evolvecli
         private void renderFrame()
         {
             _canvas.Clear(SKColors.White);
+
+            foreach (var wall in _world.Walls)
+            {
+                renderWall(wall);
+            }
+            
             foreach (Node n in _world.Nodes)
             {
                 renderNode(n);
             }
+
+            renderZone();
         }
 
         public void ExportFrame(FileInfo path)

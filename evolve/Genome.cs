@@ -1,7 +1,6 @@
-using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
 
 namespace evolve
@@ -11,7 +10,9 @@ namespace evolve
         private readonly List<Gene> _genes;
 
         private Genome(int genes)
-        : this(Network.Builder.CreateRandom(genes)) { }
+            : this(Network.Builder.CreateRandom(genes))
+        {
+        }
 
         private Genome(IEnumerable<Gene> genes)
         {
@@ -22,7 +23,7 @@ namespace evolve
         {
             return new Genome(genes);
         }
-        
+
         public void Evaluate(Node node)
         {
             // this works because the genes are sorted such that sensors evaluate first
@@ -31,29 +32,56 @@ namespace evolve
             {
                 gene.Evaluate(node);
             }
+            
         }
 
         public void Execute(Node node)
         {
-            var actions = _genes
-                .Select(sink => sink.Sink)
-                .OfType<Action>();
-
-            foreach (var a in actions)
+            if (Simulation.PerformMostCompellingAction)
             {
-                a.Act(node);
+                performMostCompellingAction(node);
+            }
+            else
+            {
+                performAllActions((node));
             }
         }
 
+        private void performAllActions(Node node)
+        {
+            foreach (var g in _genes)
+            {
+                var action = g.Sink as Action;
+                if (action != null)
+                {
+                    action.Act(node);
+                }
+            }
+        }
+
+        private void performMostCompellingAction(Node node)
+        {
+            var ordered = _genes.Select(g => g.Sink)
+                .OfType<Action>()
+                .OrderByDescending(a => a.Weight);
+
+            foreach (Action a in ordered)
+            {
+                if (a.Act(node))
+                {
+                    break;
+                }
+            }
+        }
+        
+
         public Genome Reproduce(Genome other)
         {
-            var genes = Network.Builder.CreateFromExisting(Simulation.GenesPerGenome, _genes.Concat(other._genes).ToArray());
-
-            foreach (var g in genes)
-            {
-                g.Mutate();
-            }
-
+            var genes = Network.Builder.CreateFromExisting(
+                Simulation.GenesPerGenome,
+                _genes.Concat(other._genes).ToList())
+                .Select(g => g.Mutate());
+            
             return new Genome(genes);
         }
 
@@ -75,13 +103,13 @@ namespace evolve
 
         public int Fingerprint()
         {
-            int hc = 0;
+            int fingerPrint = 0;
             foreach (var g in _genes)
             {
-                hc |= g.Fingerprint();
+                fingerPrint |= g.Fingerprint();
             }
 
-            return hc;
+            return fingerPrint;
         }
     }
 }

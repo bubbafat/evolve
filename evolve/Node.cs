@@ -5,13 +5,14 @@ namespace evolve
     public class Node
     {
         private readonly Genome _genome;
-        
+
         public Node(World world, Genome genome)
         {
             _genome = genome;
             World = world;
             Location = Location.InvalidLocation;
             Id = Guid.NewGuid();
+            LastMoveStep = 0;
         }
 
         public void Evaluate()
@@ -31,11 +32,18 @@ namespace evolve
 
         public bool Move(Location target)
         {
-            return World.MoveNodeAt(Location, target);
+            if (World.MoveNodeTo(this, target))
+            {
+                LastMoveStep = Simulation.CurrentStep;
+                return true;
+            }
+
+            return false;
         }
 
         public void Reset()
         {
+            LastMoveStep = 0;
             _genome.Reset();
         }
 
@@ -48,10 +56,12 @@ namespace evolve
         {
             return _genome.Description();
         }
-        
-        public Guid Id { get; private set; }
-        
-        public World World { get; private set; }
+
+        public int LastMoveStep { get; private set; }
+
+        public Guid Id { get; }
+
+        public World World { get; }
         public Location Location { get; set; }
 
         public int Fingerprint()

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace evolve
@@ -8,6 +9,7 @@ namespace evolve
     {
         public static readonly NetworkBuilder Builder = new NetworkBuilder();
     }
+
     public class NetworkBuilder
     {
         private static readonly SensorType[] _sensorTypes = new[]
@@ -15,11 +17,14 @@ namespace evolve
             SensorType.DistanceFromNorth,
             SensorType.DistanceFromSouth,
             SensorType.DistanceFromEast,
-            SensorType.DistanceFromWest
+            SensorType.DistanceFromWest,
+            SensorType.LocalPopulation,
+            SensorType.TimeSinceLastMove,
         };
 
         private static readonly ActionType[] _actionTypes = new[]
         {
+            ActionType.StayPut,
             ActionType.MoveNorth,
             ActionType.MoveSouth,
             ActionType.MoveEast,
@@ -27,7 +32,8 @@ namespace evolve
             ActionType.MoveNorthEast,
             ActionType.MoveNorthWest,
             ActionType.MoveSouthEast,
-            ActionType.MoveSouthWest
+            ActionType.MoveSouthWest,
+            ActionType.MoveRandom,
         };
 
         private readonly Dictionary<int, IInnerNeuron> _inners = new Dictionary<int, IInnerNeuron>();
@@ -69,12 +75,12 @@ namespace evolve
         {
             return _sensorTypes[RNG.Int(_sensorTypes.Length)];
         }
-        
+
         ActionType randomActionType()
         {
             return _actionTypes[RNG.Int(_actionTypes.Length)];
         }
-        
+
         ISink randomSink(Func<ActionType> actionType, Func<float> weight)
         {
             bool isAction = RNG.Bool();
@@ -86,7 +92,7 @@ namespace evolve
 
             return randomInner(weight);
         }
-        
+
         ISensor cachedSensor(SensorType type)
         {
             if (!_sensors.TryGetValue(type, out ISensor action))
@@ -109,12 +115,12 @@ namespace evolve
             return action;
         }
 
-        public List<Gene> CreateFromExisting(int connections, Gene[] existing)
+        public List<Gene> CreateFromExisting(int connections, IList<Gene> existing)
         {
             Reset();
-            var mix = existing.Shuffle().Take(connections).ToList();
+            var mix = existing.Shuffle().Take(connections).Select(g => g.DeepCopy()).ToList();
 
-            
+
             // we now have potentially too many inner neurons and they are wired up between two sets
             // of genes. For each IN, if we haven't seen it before AND we are not at max inner neurons,
             // add it to the neuron cache and let it be used.  If we have seen it before, use it.  If
@@ -138,7 +144,7 @@ namespace evolve
                         }
                     }
                 }
-                
+
                 var sink = g.Sink as InnerNeuron;
                 if (sink != null)
                 {
@@ -156,7 +162,57 @@ namespace evolve
                 }
             }
 
+
+            optimizeNeurons(mix);
+
+            return mix;
+        }
+
+        private static List<Gene> optimizeNeurons(List<Gene> mix)
+        {
+            var inUse = new HashSet<Guid>();
+
+            // action sinks and their sources are active
+            foreach (var g in mix)
+            {
+                if (g.Sink is Action)
+                {
+                    inUse.Add(g.Sink.Id);
+                    inUse.Add(g.Source.Id);
+                }
+            }
+
+            // now find the nodes that contribute to the actions
+            while (true)
+            {
+                int before = inUse.Count;
+                foreach (Gene g in mix)
+                {
+                    // if the sink contributes to an action, then add the source
+                    if (inUse.Contains(g.Sink.Id))
+                    {
+                        inUse.Add(g.Source.Id);
+                    }
+                }
+
+                // we didn't find anything
+                if (before == inUse.Count)
+                {
+                    break;
+                }
+            }
+
+            // remove the genes that don't contribute to actions
+            mix.RemoveAll(g => !inUse.Contains(g.Sink.Id));
+
+            // sort so that it is
+            // sensor -> *
+            // inner -> inner (same)
+            // inner -> inner (different)
+            // inner -> action
+            // this allows us to evaluate the genes in order and still have the correct ordering of actions
             mix.Sort();
+
             return mix;
         }
 
@@ -166,19 +222,13 @@ namespace evolve
             Reset();
 
             List<Gene> genes = new List<Gene>(connections);
-            
+
             for (int i = 0; i < connections; i++)
             {
                 genes.Add(new Gene(randomSource(randomSensorType, RNG.Float), randomSink(randomActionType, RNG.Float)));
             }
 
-            // sort ensures that the genes are processed in the correct order later on
-            // sensors -> *
-            // inner -> inner
-            // inner -> actions
-            genes.Sort();
-            
-            return genes;
+            return optimizeNeurons(genes);
         }
     }
 }
