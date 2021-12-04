@@ -26,8 +26,7 @@ namespace evolve
         class Move
         {
             public Node node;
-            public Location to;
-            public bool performed;
+            public Direction direction;
         }
 
         public void BeginStep()
@@ -37,24 +36,13 @@ namespace evolve
 
         public void EndStep()
         {
-            while (true)
+            foreach (var action in moveQueue)
             {
-                int performed = 0;
-                foreach (var action in moveQueue)
-                {
-                    if (!action.performed && moveNodeTo(action.node, action.to))
-                    {
-                        action.performed = true;
-                        performed++;
-                    }
-                }
-
-                if (performed == 0)
-                {
-                    return;
-                }
+                moveNodeTo(action.node, action.direction);
             }
         }
+        
+        
 
         public IEnumerable<Node> Nodes
         {
@@ -192,13 +180,24 @@ namespace evolve
             return loc;
         }
         
-        private bool moveNodeTo(Node node, Location to)
+        private bool moveNodeTo(Node node, Direction direction)
         {
-            if (availableForNode(to))
+            var xy = direction switch
+            {
+                Direction.North => (0, 1),
+                Direction.South => (0, -1),
+                Direction.East => (1, 0),
+                Direction.West => (-1, 0)
+            };
+
+            int x = node.Location.X + xy.Item1;
+            int y = node.Location.Y + xy.Item2;
+            
+            if (availableForNode(x, y))
             {
                 _grid[node.Location.X, node.Location.Y] = null;
-                _grid[to.X, to.Y] = node;
-                node.Location = to;
+                _grid[x, y] = node;
+                node.Location = Location.From(x, y);
                 
                 return true;
             }
@@ -206,20 +205,14 @@ namespace evolve
             return false;
         }
 
-        public bool MoveNodeTo(Node node, Location to)
+        public bool MoveNodeTo(Node node, Direction direction)
         {
-            if (!onBoard(to))
-            {
-                return false;
-            }
-            
             lock (_queueLock)
             {
                 moveQueue.Add(new Move
                 {
                     node = node,
-                    to = to,
-                    performed = false
+                    direction = direction,
                 });
             }
 

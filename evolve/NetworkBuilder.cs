@@ -29,10 +29,6 @@ namespace evolve
             ActionType.MoveSouth,
             ActionType.MoveEast,
             ActionType.MoveWest,
-            ActionType.MoveNorthEast,
-            ActionType.MoveNorthWest,
-            ActionType.MoveSouthEast,
-            ActionType.MoveSouthWest,
             ActionType.MoveRandom,
         };
 

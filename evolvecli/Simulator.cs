@@ -58,7 +58,7 @@ namespace evolvecli
                     Simulation.CurrentStep < Simulation.StepsPerGeneration;
                     Simulation.CurrentStep++)
                 {
-                    //renderFrame();
+                    renderFrame();
                     
                     step();
                     

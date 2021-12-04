@@ -5,11 +5,11 @@ namespace evolve
     public static class Simulation
     {
         public static readonly int TotalNodes = 1000;
-        public static readonly int Generations = 3;
+        public static readonly int Generations = 1000;
         public static readonly int StepsPerGeneration = 300;
         public static readonly double SuccessThreshold = 0.95;
         public static readonly int BoardDimensions = 128;
-        public static readonly int GenesPerGenome = 8;
+        public static readonly int GenesPerGenome = 6;
         public static readonly int InnerNeurons = 3;
         public static readonly float MutationChance = 0.001f;
         public static readonly bool EnableRendering = true;
@@ -18,7 +18,7 @@ namespace evolve
 
         public static bool RenderFrame =>
             EnableRendering
-                &&  (CurrentGeneration == -1
+                &&  (CurrentGeneration == 1
                     || WinThresholdExceeded
                     || CurrentGeneration == Generations);
 
@@ -27,7 +27,8 @@ namespace evolve
 
         public static float ActivationFunction(float value)
         {
-            return 1.0f / (1.0f + (float) Math.Exp(-value));
+            return (float)Math.Tanh(value);
+//            return 1.0f / (1.0f + (float) Math.Exp(-value));
         }
 
         public static bool WeightToBool(float weight)

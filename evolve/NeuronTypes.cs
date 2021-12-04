@@ -2,6 +2,13 @@ using System;
 
 namespace evolve
 {
+    public enum Direction
+    {
+        North,
+        South,
+        East,
+        West
+    };
     public interface IDescribable
     {
         public Guid Id { get; }
@@ -43,6 +50,6 @@ namespace evolve
 
     public interface IAction : ISink, IIdentifiable<ActionType>
     {
-        public bool Act(Node node);
+        public float Weight { get; }
     }
 }

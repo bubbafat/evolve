@@ -32,49 +32,8 @@ namespace evolve
             {
                 gene.Evaluate(node);
             }
-            
-        }
-
-        public void Execute(Node node)
-        {
-            if (Simulation.PerformMostCompellingAction)
-            {
-                performMostCompellingAction(node);
-            }
-            else
-            {
-                performAllActions((node));
-            }
-        }
-
-        private void performAllActions(Node node)
-        {
-            foreach (var g in _genes)
-            {
-                var action = g.Sink as Action;
-                if (action != null)
-                {
-                    action.Act(node);
-                }
-            }
-        }
-
-        private void performMostCompellingAction(Node node)
-        {
-            var ordered = _genes.Select(g => g.Sink)
-                .OfType<Action>()
-                .OrderByDescending(a => a.Weight);
-
-            foreach (Action a in ordered)
-            {
-                if (a.Act(node))
-                {
-                    break;
-                }
-            }
         }
         
-
         public Genome Reproduce(Genome other)
         {
             var genes = Network.Builder.CreateFromExisting(
@@ -110,6 +69,18 @@ namespace evolve
             }
 
             return fingerPrint;
+        }
+
+        public IEnumerable<IAction> GetActions()
+        {
+            foreach (var g in _genes)
+            {
+                var action = g.Sink as IAction;
+                if (action != null)
+                {
+                    yield return action;
+                }
+            }
         }
     }
 }
