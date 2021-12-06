@@ -25,13 +25,16 @@ namespace evolve
             ActionType.MoveRandom,
         };
 
-        
+        // we create millions of these - so keep an MRU cache so we can minimize allocations
+        private static readonly ConcurrentStack<NetworkBuilder> _builders = new ConcurrentStack<NetworkBuilder>();
+        private readonly Dictionary<ActionType, Action> _actions = new Dictionary<ActionType, Action>();
+
+
         // each time a network is built, these are used to ensure that the network does not have
         // duplicate genes - if the network has the same type of sensor used 3 times, then there
         // should still only be one sensor instance for that type.  These are reset between genes.
         private readonly Dictionary<int, InnerNeuron> _inners = new Dictionary<int, InnerNeuron>();
         private readonly Dictionary<SensorType, Sensor> _sensors = new Dictionary<SensorType, Sensor>();
-        private readonly Dictionary<ActionType, Action> _actions = new Dictionary<ActionType, Action>();
 
         private void Reset()
         {
@@ -40,50 +43,40 @@ namespace evolve
             _actions.Clear();
         }
 
-        private InnerNeuron RandomInner(Func<float> weight)
+        private InnerNeuron RandomInner()
         {
             int innerIndex = RNG.Int() % Simulation.InnerNeurons;
             if (!_inners.TryGetValue(innerIndex, out InnerNeuron neuron))
             {
-                neuron = new InnerNeuron(weight());
+                neuron = new InnerNeuron(RNG.Double());
                 _inners.Add(innerIndex, neuron);
             }
 
             return neuron;
         }
 
-        private IActivatable RandomSource(Func<SensorType> sensorType, Func<float> weight)
+        private IActivatable RandomSource()
         {
-            bool isSensor = RNG.Bool();
-            if (isSensor)
+            bool createSensor = RNG.Bool();
+            if (createSensor)
             {
-                var type = sensorType();
+                var type = SensorTypes.Random();
                 return CachedSensor(type);
             }
 
-            return RandomInner(weight);
+            return RandomInner();
         }
 
-        private static SensorType RandomSensorType()
+        private ISink RandomSink()
         {
-            return SensorTypes[RNG.Int(SensorTypes.Length)];
-        }
-
-        private static ActionType RandomActionType()
-        {
-            return ActionTypes[RNG.Int(ActionTypes.Length)];
-        }
-
-        private ISink RandomSink(Func<ActionType> actionType, Func<float> weight)
-        {
-            bool isAction = RNG.Bool();
-            if (isAction)
+            bool createAction = RNG.Bool();
+            if (createAction)
             {
-                var type = actionType();
+                var type = ActionTypes.Random();
                 return CachedAction(type);
             }
 
-            return RandomInner(weight);
+            return RandomInner();
         }
 
         private Sensor CachedSensor(SensorType type)
@@ -210,9 +203,7 @@ namespace evolve
 
         private Gene CreateRandomGene()
         {
-            return new Gene(
-                RandomSource(RandomSensorType, RNG.Float), 
-                RandomSink(RandomActionType, RNG.Float));
+            return new Gene(RandomSource(), RandomSink());
         }
 
         private IEnumerable<Gene> createRandom(int connections)
@@ -230,9 +221,6 @@ namespace evolve
             return OptimizeNeurons(genes);
         }
 
-        // we create millions of these - so keep an MRU cache so we can minimize allocations
-        private static ConcurrentStack<NetworkBuilder> _builders = new ConcurrentStack<NetworkBuilder>();
-        
         public static IEnumerable<Gene> CreateFromExisting(IList<Gene> existing)
         {
             NetworkBuilder nb;
@@ -248,6 +236,7 @@ namespace evolve
 
             return result;
         }
+
         public static IEnumerable<Gene> CreateRandom(int connections)
         {
             if (!_builders.TryPop(out NetworkBuilder nb))

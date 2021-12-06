@@ -21,7 +21,7 @@ namespace evolve
     {
         public IActivatable DeepCopy();
 
-        public float Activate(Node node);
+        public double Activate(Node node);
     }
     
     public interface ISink : IDescribable
@@ -29,7 +29,7 @@ namespace evolve
         public ISink DeepCopy();
 
         public void Mutate();
-        public void UpdateWeight(float weight);
+        public void UpdateWeight(double weight);
         public void Reset();
     }
 }

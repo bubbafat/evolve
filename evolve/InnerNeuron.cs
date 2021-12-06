@@ -4,13 +4,13 @@ namespace evolve
 {
     public class InnerNeuron : IActivatable, ISink
     {
-        private float _weight;
-        private float _initialWeight;
+        private double _weight;
+        private double _initialWeight;
 
-        public InnerNeuron(float initialWeight)
+        public InnerNeuron(double initialWeight)
         {
             Id = Guid.NewGuid();
-            _initialWeight = Simulation.ActivationFunction(RNG.Float());
+            _initialWeight = Simulation.ActivationFunction(RNG.Double());
             _weight = initialWeight;
         }
 
@@ -26,8 +26,8 @@ namespace evolve
                 var mutateUp = RNG.Bool();
                 
                 _initialWeight = mutateUp
-                    ? RNG.Float() * (1f - _initialWeight)
-                    : RNG.Float();
+                    ? RNG.Double() * (1.0 - _initialWeight)
+                    : RNG.Double();
             }
         }
 
@@ -36,12 +36,12 @@ namespace evolve
             return new InnerNeuron(_initialWeight);
         }
 
-        public float Activate(Node node)
+        public double Activate(Node node)
         {
             return Simulation.ActivationFunction(_weight);
         }
         
-        public void UpdateWeight(float weight)
+        public void UpdateWeight(double weight)
         {
             _weight += weight;
         }

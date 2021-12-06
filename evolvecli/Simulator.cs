@@ -18,12 +18,7 @@ namespace evolvecli
             _world = world;
             _board = board;
         }
-
-        private bool inBreedingGrounds(int x, int y)
-        {
-            return (x < 10);
-        }
-
+        
         private void endGeneration()
         {
             Console.WriteLine();
@@ -71,7 +66,7 @@ namespace evolvecli
                 
                 EvalTimer.Start();
                 
-                _world.RemoveIf(n => !inBreedingGrounds(n.X, n.Y));
+                _world.RemoveIf(n => !Simulation.InBreedingGrounds(n.X, n.Y));
                 
                 if (Simulation.WinThresholdExceeded)
                 {
@@ -99,7 +94,7 @@ namespace evolvecli
 
                 }
 
-                double survivalRatio = (float) survived / (float) Simulation.TotalNodes;
+                double survivalRatio = survived / (double) Simulation.TotalNodes;
                 Simulation.WinThresholdExceeded = survivalRatio >= Simulation.SuccessThreshold;
 
                 Console.WriteLine($"{survived} survived ({survivalRatio}%)");

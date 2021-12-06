@@ -8,7 +8,7 @@ namespace evolve
         private static readonly RandomGenerator _rng = new RandomGenerator();
 
         public static int Int() => _rng.Int();
-        public static float Float() => _rng.Float();
+        public static double Double() => _rng.Double();
         public static bool Bool() => _rng.Bool();
 
         public static int Int(int max) => _rng.Int() % max;
@@ -18,7 +18,7 @@ namespace evolve
     {
         private readonly Random _rng = new Random();
         private readonly ConcurrentQueue<int> _ints = new ConcurrentQueue<int>();
-        private readonly ConcurrentQueue<float> _floats = new ConcurrentQueue<float>();
+        private readonly ConcurrentQueue<double> _doubles = new ConcurrentQueue<double>();
         private const int CacheLimit = 10000;
         private readonly object _lock = new object();
         
@@ -45,23 +45,23 @@ namespace evolve
 
         public bool Bool()
         {
-            return Float() < 0.5f;
+            return Double() < 0.5;
         }
 
-        public float Float()
+        public double Double()
         {
-            if (_floats.TryDequeue(out var result)) 
+            if (_doubles.TryDequeue(out var result)) 
                 return result;
             
             lock (_lock)
             {
-                result = (float) _rng.NextDouble();
+                result = _rng.NextDouble();
 
-                if (_floats.IsEmpty)
+                if (_doubles.IsEmpty)
                 {
                     for (int i = 0; i < CacheLimit; i++)
                     {
-                        _floats.Enqueue((float) _rng.NextDouble());
+                        _doubles.Enqueue(_rng.NextDouble());
                     }
                 }
             }

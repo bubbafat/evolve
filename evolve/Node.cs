@@ -8,16 +8,16 @@ namespace evolve
         {
             Reset();
         }
-        public float MoveX { get; set; }
-        public float MoveY { get; set; }
+        public double MoveX { get; set; }
+        public double MoveY { get; set; }
         
-        public float StayPut { get; set; }
+        public double StayPut { get; set; }
         
         public void Reset()
         {
-            MoveX = 0f;
-            MoveY = 0f;
-            StayPut = 0f;
+            MoveX = 0d;
+            MoveY = 0d;
+            StayPut = 0d;
         }
     }
     public class Node
@@ -50,7 +50,7 @@ namespace evolve
 
             foreach (var action in actions)
             {
-                float weight = action.Weight;
+                double weight = action.Weight;
 
                 switch (action.Type)
                 {
@@ -82,9 +82,9 @@ namespace evolve
         {
             UpdateDesires();
 
-            float stayWeight = Simulation.ActivationFunction(Math.Abs(_desire.StayPut));
-            float moveXWeight = Simulation.ActivationFunction(Math.Abs(_desire.MoveY));
-            float moveYWeight = Simulation.ActivationFunction(Math.Abs(_desire.MoveX));
+            double stayWeight = Simulation.ActivationFunction(Math.Abs(_desire.StayPut));
+            double moveXWeight = Simulation.ActivationFunction(Math.Abs(_desire.MoveY));
+            double moveYWeight = Simulation.ActivationFunction(Math.Abs(_desire.MoveX));
 
             // if the desire to stay is stronger than the desire to move check if you stay
             if (stayWeight > moveXWeight && stayWeight > moveYWeight)
@@ -95,13 +95,13 @@ namespace evolve
             
             if (Simulation.WeightToBool(moveYWeight))
             {
-                bool north = _desire.MoveY > 0f;
+                bool north = _desire.MoveY > 0d;
                 Move(north ? Direction.North : Direction.South);
             }
             
             if (Simulation.WeightToBool(moveXWeight))
             {
-                bool east = _desire.MoveX > 0f;
+                bool east = _desire.MoveX > 0d;
                 Move(east ? Direction.East : Direction.West);
             }
         }
@@ -113,13 +113,13 @@ namespace evolve
 
             switch (x, pos)
             {
-                case (true, true): _desire.MoveX += RNG.Float();
+                case (true, true): _desire.MoveX += RNG.Double();
                     break;
-                case (true, false): _desire.MoveX -= RNG.Float();
+                case (true, false): _desire.MoveX -= RNG.Double();
                     break;
-                case (false, true): _desire.MoveY += RNG.Float();
+                case (false, true): _desire.MoveY += RNG.Double();
                     break;
-                case (false, false): _desire.MoveY -= RNG.Float();
+                case (false, false): _desire.MoveY -= RNG.Double();
                     break;
             }
         }

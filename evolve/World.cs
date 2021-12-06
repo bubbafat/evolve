@@ -181,15 +181,15 @@ namespace evolve
             return count;
         }
 
-        public float ReadSensor(SensorType type, Node node)
+        public double ReadSensor(SensorType type, Node node)
         {
             return type switch
             {
-                SensorType.TimeSinceLastMove => node.LastMoveStep / (float) Simulation.CurrentStep,
-                SensorType.DistanceFromNorth => 1f - node.Y / (float) Dimension,
-                SensorType.DistanceFromSouth => node.Y / (float) Dimension,
-                SensorType.DistanceFromWest => 1f - node.X / (float) Dimension,
-                SensorType.DistanceFromEast => node.X / (float) Dimension,
+                SensorType.TimeSinceLastMove => node.LastMoveStep / (double) Simulation.CurrentStep,
+                SensorType.DistanceFromNorth => 1.0 - node.Y / (double) Dimension,
+                SensorType.DistanceFromSouth => node.Y / (double) Dimension,
+                SensorType.DistanceFromWest => 1.0 - node.X / (double) Dimension,
+                SensorType.DistanceFromEast => node.X / (double) Dimension,
                 SensorType.LocalPopulation => PopulationAround(node.X, node.Y),
                 _ => throw new NotSupportedException("Invalid SensorType")
             };

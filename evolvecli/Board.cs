@@ -37,11 +37,23 @@ namespace evolvecli
             Style = SKPaintStyle.Fill
         };
 
-        private void renderZone()
+        private void renderBreedingGround()
         {
-            SKRect rect = new SKRect(0, 0, 10 * CellMultiple,  128 * CellMultiple);
-            
-            _canvas.DrawRect(rect, _zoneColor);
+            for (int x = 0; x < Simulation.BoardDimensions; x++)
+            {
+                for (int y = 0; y < Simulation.BoardDimensions; y++)
+                {
+                    if (Simulation.InBreedingGrounds(x, y))
+                    {
+                        float bgx = x * CellMultiple;
+                        float bgy = y * CellMultiple;
+
+                        SKRect rect = new SKRect(bgx, bgy, bgx + CellMultiple, bgy + CellMultiple);
+
+                        _canvas.DrawRect(rect, _zoneColor);
+                    }
+                }
+            }
         }
 
         private void renderWall(int lx, int ly)
@@ -92,7 +104,7 @@ namespace evolvecli
                 renderNode(n);
             }
 
-            renderZone();
+            renderBreedingGround();
         }
 
         public void ExportFrame(FileInfo path)

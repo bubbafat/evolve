@@ -29,12 +29,12 @@ namespace evolve
         public Guid Id { get; }
 
 
-        private float ReadWeight(Node node)
+        private double ReadWeight(Node node)
         {
             return node.World.ReadSensor(Type, node);
         }
 
-        public float Activate(Node node)
+        public double Activate(Node node)
         {
             return Simulation.ActivationFunction(ReadWeight(node));
         }

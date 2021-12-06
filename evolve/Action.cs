@@ -15,7 +15,7 @@ namespace evolve
 
     public class Action : ISink
     {
-        private const float InitialWeight = 0f;
+        private const double InitialWeight = 0d;
         public Action(ActionType type)
         {
             Type = type;
@@ -25,12 +25,12 @@ namespace evolve
 
         public Guid Id { get; }
         
-        public void UpdateWeight(float weight)
+        public void UpdateWeight(double weight)
         {
             Weight += weight;
         }
 
-        public float Weight { get; private set; }
+        public double Weight { get; private set; }
 
         public void Reset()
         {
