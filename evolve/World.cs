@@ -181,6 +181,14 @@ namespace evolve
             return count;
         }
 
+        private double DistanceFromCenter(int x, int y)
+        {
+            int x2 = Dimension / 2;
+            int y2 = Dimension / 2;
+
+            return Math.Sqrt(Math.Pow(x2 - x, 2) + Math.Pow(y2 - y, 2));
+        }
+
         public double ReadSensor(SensorType type, Node node)
         {
             return type switch
@@ -191,6 +199,7 @@ namespace evolve
                 SensorType.DistanceFromWest => 1.0 - node.X / (double) Dimension,
                 SensorType.DistanceFromEast => node.X / (double) Dimension,
                 SensorType.LocalPopulation => PopulationAround(node.X, node.Y),
+                SensorType.DistanceFromCenter => DistanceFromCenter(node.X, node.Y),
                 _ => throw new NotSupportedException("Invalid SensorType")
             };
         }

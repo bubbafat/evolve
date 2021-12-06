@@ -11,6 +11,7 @@ namespace evolve
         MoveEast = 1 << 15,
         MoveWest = 1 << 16,
         MoveRandom = 1 << 17,
+        MoveToCenter = 1 << 18,
     }
 
     public class Action : ISink

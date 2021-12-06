@@ -72,6 +72,9 @@ namespace evolve
                     case ActionType.MoveRandom:
                         MoveRandom();
                         break;
+                    case ActionType.MoveToCenter:
+                        MoveToCenter();
+                        break;
                     default:
                         throw new InvalidOperationException($"Unknown action: {action.Type}");
                 }
@@ -121,6 +124,33 @@ namespace evolve
                     break;
                 case (false, false): _desire.MoveY -= RNG.Double();
                     break;
+            }
+        }
+
+        private void MoveToCenter()
+        {
+            bool westOfCenter = X < World.Dimension / 2 - 5;
+            bool eastOfCenter = X > World.Dimension / 2 + 5;
+            
+            bool southOfCenter = Y < World.Dimension / 2 - 5;
+            bool northOfCenter = Y > World.Dimension / 2 + 5;
+
+            if (westOfCenter)
+            {
+                _desire.MoveX += RNG.Double();
+            } 
+            else if (eastOfCenter)
+            {
+                _desire.MoveX -= RNG.Double();
+            }
+
+            if (southOfCenter)
+            {
+                _desire.MoveY += RNG.Double();
+            }
+            else if (northOfCenter)
+            {
+                _desire.MoveY -= RNG.Double();
             }
         }
 

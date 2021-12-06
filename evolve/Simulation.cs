@@ -5,12 +5,12 @@ namespace evolve
     public static class Simulation
     {
         public const int TotalNodes = 1000;
-        public const int Generations = 20;
+        public const int Generations = 1000;
         public const int StepsPerGeneration = 150;
-        public const double SuccessThreshold = 0.95;
+        public const double SuccessThreshold = 0.98;
         public const int BoardDimensions = 128;
-        public const int GenesPerGenome = 12;
-        public const int InnerNeurons = 6;
+        public const int GenesPerGenome = 3;
+        public const int InnerNeurons = 1;
         public const double MutationChance = 0.001;
         public const bool RequireExactGenesPerGenome = true;
 

@@ -9,8 +9,9 @@ namespace evolve
         DistanceFromSouth = 1 << 2,
         DistanceFromEast = 1 << 3,
         DistanceFromWest = 1 << 4,
-        LocalPopulation = 1 << 5,
-        TimeSinceLastMove = 1 << 6,
+        DistanceFromCenter = 1 << 5,
+        LocalPopulation = 1 << 6,
+        TimeSinceLastMove = 1 << 7,
     }
 
     public class Sensor : IActivatable

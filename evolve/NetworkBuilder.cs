@@ -12,6 +12,7 @@ namespace evolve
             SensorType.DistanceFromSouth,
             SensorType.DistanceFromEast,
             SensorType.DistanceFromWest,
+            SensorType.DistanceFromCenter,
             SensorType.LocalPopulation,
             SensorType.TimeSinceLastMove,
         };
@@ -23,6 +24,7 @@ namespace evolve
             ActionType.MoveEast,
             ActionType.MoveWest,
             ActionType.MoveRandom,
+            ActionType.MoveToCenter,
         };
 
         // we create millions of these - so keep an MRU cache so we can minimize allocations
