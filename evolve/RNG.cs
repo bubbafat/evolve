@@ -21,21 +21,21 @@ namespace evolve
         private readonly ConcurrentQueue<float> _floats = new ConcurrentQueue<float>();
         private const int CacheLimit = 10000;
         private readonly object _lock = new object();
-
+        
         public int Int()
         {
-            if (!_ints.TryDequeue(out var result))
+            if (_ints.TryDequeue(out var result)) 
+                return result;
+            
+            lock (_lock)
             {
-                lock (_lock)
-                {
-                    result = _rng.Next();
+                result = _rng.Next();
 
-                    if (_ints.IsEmpty)
+                if (_ints.IsEmpty)
+                {
+                    for (int i = 0; i < CacheLimit; i++)
                     {
-                        for (int i = 0; i < CacheLimit; i++)
-                        {
-                            _ints.Enqueue(_rng.Next());
-                        }
+                        _ints.Enqueue(_rng.Next());
                     }
                 }
             }
@@ -50,18 +50,18 @@ namespace evolve
 
         public float Float()
         {
-            if (!_floats.TryDequeue(out var result))
+            if (_floats.TryDequeue(out var result)) 
+                return result;
+            
+            lock (_lock)
             {
-                lock (_lock)
-                {
-                    result = (float) _rng.NextDouble();
+                result = (float) _rng.NextDouble();
 
-                    if (_floats.IsEmpty)
+                if (_floats.IsEmpty)
+                {
+                    for (int i = 0; i < CacheLimit; i++)
                     {
-                        for (int i = 0; i < CacheLimit; i++)
-                        {
-                            _floats.Enqueue((float) _rng.NextDouble());
-                        }
+                        _floats.Enqueue((float) _rng.NextDouble());
                     }
                 }
             }

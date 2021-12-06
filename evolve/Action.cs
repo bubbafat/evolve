@@ -5,39 +5,36 @@ namespace evolve
     [Flags]
     public enum ActionType
     {
-        StayPut = (1 << 12),
-        MoveNorth = (1 << 13),
-        MoveSouth = (1 << 14),
-        MoveEast = (1 << 15),
-        MoveWest = (1 << 16),
-        MoveRandom = (1 << 17),
+        StayPut = 1 << 12,
+        MoveNorth = 1 << 13,
+        MoveSouth = 1 << 14,
+        MoveEast = 1 << 15,
+        MoveWest = 1 << 16,
+        MoveRandom = 1 << 17,
     }
 
-    public class Action : IAction
+    public class Action : ISink
     {
-        private float _weight;
-        
-        public Action(ActionType type, float initialWeight)
+        private const float InitialWeight = 0f;
+        public Action(ActionType type)
         {
             Type = type;
-            _weight = InitialWeight;
+            Weight = InitialWeight;
             Id = Guid.NewGuid();
         }
 
         public Guid Id { get; }
         
-        public float InitialWeight => 0f;
-
         public void UpdateWeight(float weight)
         {
-            _weight += weight;
+            Weight += weight;
         }
 
-        public float Weight => _weight;
-        
+        public float Weight { get; private set; }
+
         public void Reset()
         {
-            _weight = InitialWeight;
+            Weight = InitialWeight;
         }
 
         public ActionType Type { get; }
@@ -49,18 +46,17 @@ namespace evolve
 
         public string Description()
         {
-            return $"Action ({Simulation.ActivationFunction(_weight)} - {Type} - {Id})";
+            return $"Action ({Simulation.ActivationFunction(Weight)} - {Type} - {Id})";
         }
 
-        public ISink Mutate()
+        public void Mutate()
         {
             // actions don't mutate
-            return this;
         }
 
         public ISink DeepCopy()
         {
-            return new Action(Type, InitialWeight);
+            return new Action(Type);
         }
     }
 }

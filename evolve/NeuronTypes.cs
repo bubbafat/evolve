@@ -8,7 +8,7 @@ namespace evolve
         South,
         East,
         West
-    };
+    }
     public interface IDescribable
     {
         public Guid Id { get; }
@@ -16,40 +16,20 @@ namespace evolve
         public string Description();
         public int Fingerprint();
     }
-
-    public interface IIdentifiable<TType>
+    
+    public interface IActivatable : IDescribable
     {
-        public TType Type { get; }
-    }
+        public IActivatable DeepCopy();
 
-    public interface ICopyable<T>
-    {
-        public T DeepCopy();
-    }
-
-    public interface IActivatable : IDescribable, ICopyable<IActivatable>
-    {
         public float Activate(Node node);
     }
-
-    public interface ISensor : IActivatable, IIdentifiable<SensorType>
+    
+    public interface ISink : IDescribable
     {
-    }
+        public ISink DeepCopy();
 
-    public interface ISink : IDescribable, ICopyable<ISink>
-    {
-        public ISink Mutate();
-        public float InitialWeight { get; }
+        public void Mutate();
         public void UpdateWeight(float weight);
         public void Reset();
-    }
-
-    public interface IInnerNeuron : IActivatable, ISink
-    {
-    }
-
-    public interface IAction : ISink, IIdentifiable<ActionType>
-    {
-        public float Weight { get; }
     }
 }

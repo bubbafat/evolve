@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -10,7 +9,7 @@ namespace evolve
         private readonly List<Gene> _genes;
 
         private Genome(int genes)
-            : this(Network.Builder.CreateRandom(genes))
+            : this(NetworkBuilder.CreateRandom(genes))
         {
         }
 
@@ -36,12 +35,12 @@ namespace evolve
         
         public Genome Reproduce(Genome other)
         {
-            var genes = Network.Builder.CreateFromExisting(
-                Simulation.GenesPerGenome,
-                _genes.Concat(other._genes).ToList())
-                .Select(g => g.Mutate());
+            var genes = NetworkBuilder.CreateFromExisting(
+                _genes.Concat(other._genes).ToList());
+                
+            var mutated = genes.Select(g => g.Mutate());
             
-            return new Genome(genes);
+            return new Genome(mutated);
         }
 
         public void Reset()
@@ -71,16 +70,11 @@ namespace evolve
             return fingerPrint;
         }
 
-        public IEnumerable<IAction> GetActions()
+        public IEnumerable<Action> GetActions()
         {
-            foreach (var g in _genes)
-            {
-                var action = g.Sink as IAction;
-                if (action != null)
-                {
-                    yield return action;
-                }
-            }
+            return _genes
+                .Select(g => g.Sink)
+                .OfType<Action>();
         }
     }
 }

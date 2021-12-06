@@ -44,10 +44,10 @@ namespace evolvecli
             _canvas.DrawRect(rect, _zoneColor);
         }
 
-        private void renderWall(Location loc)
+        private void renderWall(int lx, int ly)
         {
-            float x = loc.X * CellMultiple;
-            float y = loc.Y * CellMultiple;
+            float x = lx * CellMultiple;
+            float y = ly * CellMultiple;
 
             SKRect rect = new SKRect(x, y, x + CellMultiple, y + CellMultiple);
             
@@ -57,8 +57,8 @@ namespace evolvecli
         private void renderNode(Node n)
         {
             SKPoint point = new SKPoint(
-                n.Location.X * CellMultiple + NodeRadius,
-                n.Location.Y * CellMultiple + NodeRadius);
+                n.X * CellMultiple + NodeRadius,
+                n.Y * CellMultiple + NodeRadius);
 
             int paintKey = n.Fingerprint();
             if (!_paintCache.TryGetValue(paintKey, out SKPaint paint))
@@ -84,7 +84,7 @@ namespace evolvecli
 
             foreach (var wall in _world.Walls)
             {
-                renderWall(wall);
+                renderWall(wall.Item1, wall.Item2);
             }
             
             foreach (Node n in _world.Nodes)

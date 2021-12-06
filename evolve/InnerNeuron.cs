@@ -2,38 +2,45 @@ using System;
 
 namespace evolve
 {
-    public class InnerNeuron : IInnerNeuron
+    public class InnerNeuron : IActivatable, ISink
     {
         private float _weight;
+        private float _initialWeight;
 
         public InnerNeuron(float initialWeight)
         {
             Id = Guid.NewGuid();
-            InitialWeight = Simulation.ActivationFunction(RNG.Float());
+            _initialWeight = Simulation.ActivationFunction(RNG.Float());
             _weight = initialWeight;
         }
-        
-        public ISink Mutate()
+
+        ISink ISink.DeepCopy()
+        {
+            return new InnerNeuron(_initialWeight);
+        }
+
+        public void Mutate()
         {
             if (Simulation.WeightToBool(Simulation.MutationChance))
             {
                 var mutateUp = RNG.Bool();
                 
-                InitialWeight = (mutateUp)
-                    ? RNG.Float() * (1f - InitialWeight)
+                _initialWeight = mutateUp
+                    ? RNG.Float() * (1f - _initialWeight)
                     : RNG.Float();
             }
+        }
 
-            return this;
+        IActivatable IActivatable.DeepCopy()
+        {
+            return new InnerNeuron(_initialWeight);
         }
 
         public float Activate(Node node)
         {
             return Simulation.ActivationFunction(_weight);
         }
-
-        public float InitialWeight { get; private set; }
-
+        
         public void UpdateWeight(float weight)
         {
             _weight += weight;
@@ -43,7 +50,7 @@ namespace evolve
 
         public void Reset()
         {
-            _weight = InitialWeight;
+            _weight = _initialWeight;
         }
 
         public int Fingerprint()
@@ -54,16 +61,6 @@ namespace evolve
         public string Description()
         {
             return $"InnerNeuron ({Activate(null!)} - {Id})";
-        }
-
-        IActivatable ICopyable<IActivatable>.DeepCopy()
-        {
-            return new InnerNeuron(InitialWeight);
-        }
-
-        ISink ICopyable<ISink>.DeepCopy()
-        {
-            return new InnerNeuron(InitialWeight);
         }
     }
 }

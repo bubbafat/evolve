@@ -23,25 +23,28 @@ namespace evolve
     public class Node
     {
         private readonly Genome _genome;
+        private Desires _desire;
 
         public Node(World world, Genome genome)
         {
             _genome = genome;
             World = world;
-            Location = Location.InvalidLocation;
             Id = Guid.NewGuid();
             LastMoveStep = 0;
-            Desire = new Desires();
+            _desire = new Desires();
+            X = -1;
+            Y = -1;
         }
         
-        public Desires Desire { get; }
-
+        public int X { get; set; }
+        public int Y { get; set; }
+        
         public void Evaluate()
         {
             _genome.Evaluate(this);
         }
 
-        private void updateDesires()
+        private void UpdateDesires()
         {
             var actions = _genome.GetActions();
 
@@ -52,19 +55,19 @@ namespace evolve
                 switch (action.Type)
                 {
                     case ActionType.MoveNorth:
-                        Desire.MoveY += weight;
+                        _desire.MoveY += weight;
                         break;
                     case ActionType.MoveSouth:
-                        Desire.MoveY -= weight;
+                        _desire.MoveY -= weight;
                         break;
                     case ActionType.MoveEast:
-                        Desire.MoveX += weight;
+                        _desire.MoveX += weight;
                         break;
                     case ActionType.MoveWest:
-                        Desire.MoveX -= weight;
+                        _desire.MoveX -= weight;
                         break;
                     case ActionType.StayPut:
-                        Desire.StayPut += weight;
+                        _desire.StayPut += weight;
                         break;
                     case ActionType.MoveRandom:
                         MoveRandom();
@@ -77,66 +80,66 @@ namespace evolve
 
         public void Execute()
         {
-            updateDesires();
-            
-            if(Simulation.WeightToBool(Simulation.ActivationFunction(Math.Abs(Desire.StayPut))))
+            UpdateDesires();
+
+            float stayWeight = Simulation.ActivationFunction(Math.Abs(_desire.StayPut));
+            float moveXWeight = Simulation.ActivationFunction(Math.Abs(_desire.MoveY));
+            float moveYWeight = Simulation.ActivationFunction(Math.Abs(_desire.MoveX));
+
+            // if the desire to stay is stronger than the desire to move check if you stay
+            if (stayWeight > moveXWeight && stayWeight > moveYWeight)
             {
-                return;
+                if (Simulation.WeightToBool(stayWeight))
+                    return;
             }
             
-            bool north = Desire.MoveY > 0f;
-            bool movey = Simulation.WeightToBool(Simulation.ActivationFunction(Math.Abs(Desire.MoveY)));
-
-            bool east = Desire.MoveX > 0f;
-            bool movex = Simulation.WeightToBool(Simulation.ActivationFunction(Math.Abs(Desire.MoveX)));
-
-            if (movey)
+            if (Simulation.WeightToBool(moveYWeight))
             {
+                bool north = _desire.MoveY > 0f;
                 Move(north ? Direction.North : Direction.South);
             }
             
-            if (movex)
+            if (Simulation.WeightToBool(moveXWeight))
             {
+                bool east = _desire.MoveX > 0f;
                 Move(east ? Direction.East : Direction.West);
             }
         }
 
-        public void MoveRandom()
+        private void MoveRandom()
         {
             bool x = RNG.Bool();
             bool pos = RNG.Bool();
 
             switch (x, pos)
             {
-                case (true, true): Desire.MoveX += RNG.Float();
+                case (true, true): _desire.MoveX += RNG.Float();
                     break;
-                case (true, false): Desire.MoveX -= RNG.Float();
+                case (true, false): _desire.MoveX -= RNG.Float();
                     break;
-                case (false, true): Desire.MoveY += RNG.Float();
+                case (false, true): _desire.MoveY += RNG.Float();
                     break;
-                case (false, false): Desire.MoveY -= RNG.Float();
+                case (false, false): _desire.MoveY -= RNG.Float();
                     break;
             }
         }
 
-        public bool Move(Direction direction)
+        private void Move(Direction direction)
         {
             World.MoveNodeTo(this, direction);
             LastMoveStep = Simulation.CurrentStep;
-
-            return true;
         }
 
         public void Reset()
         {
             LastMoveStep = 0;
             _genome.Reset();
-            Desire.Reset();
+            _desire.Reset();
         }
 
         public Node Reproduce(Node other)
         {
-            return new Node(this.World, _genome.Reproduce(other._genome));
+            return new Node(World, _genome.Reproduce(other._genome));
         }
 
         public string Description()
@@ -149,8 +152,6 @@ namespace evolve
         public Guid Id { get; }
 
         public World World { get; }
-        public Location Location { get; set; }
-
         public int Fingerprint()
         {
             return _genome.Fingerprint();

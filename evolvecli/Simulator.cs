@@ -19,9 +19,9 @@ namespace evolvecli
             _board = board;
         }
 
-        private bool inBreedingGrounds(Location loc)
+        private bool inBreedingGrounds(int x, int y)
         {
-            return (loc.X < 10);
+            return (x < 10);
         }
 
         private void endGeneration()
@@ -71,7 +71,7 @@ namespace evolvecli
                 
                 EvalTimer.Start();
                 
-                _world.RemoveIf(n => !inBreedingGrounds(n.Location));
+                _world.RemoveIf(n => !inBreedingGrounds(n.X, n.Y));
                 
                 if (Simulation.WinThresholdExceeded)
                 {

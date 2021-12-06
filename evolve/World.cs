@@ -1,8 +1,6 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 
 namespace evolve
 {
@@ -12,217 +10,143 @@ namespace evolve
         private readonly bool[,] _blocks;
         private readonly List<Node> _nodes = new List<Node>();
 
-        private readonly List<Move> moveQueue;
-        private object _queueLock = new object();
+        private readonly List<Move> _moveQueue;
 
         public World(int dimensions)
         {
             Dimension = dimensions;
             _grid = new Node[Dimension, Dimension];
             _blocks = new bool[Dimension, Dimension];
-            moveQueue = new List<Move>();
+            _moveQueue = new List<Move>();
         }
 
-        class Move
+        private class Move
         {
-            public Node node;
-            public Direction direction;
+            public Move(Node node, Direction dir)
+            {
+                Node = node;
+                Direction = dir;
+            }
+            
+            public readonly Node Node;
+            public readonly Direction Direction;
         }
 
         public void BeginStep()
         {
-            moveQueue.Clear();
+            _moveQueue.Clear();
         }
 
         public void EndStep()
         {
-            foreach (var action in moveQueue)
+            foreach (var action in _moveQueue)
             {
-                moveNodeTo(action.node, action.direction);
+                PerformNodeMove(action.Node, action.Direction);
             }
         }
         
-        
-
-        public IEnumerable<Node> Nodes
-        {
-            get => _nodes;
-        }
+        public IEnumerable<Node> Nodes => _nodes;
 
         public int Dimension { get; }
 
-        private bool hasNode(int x, int y)
+        private bool HasNode(int x, int y)
         {
             return _grid[x, y] != null;
         }
-
-        private bool hasNode(Location loc)
-        {
-            return hasNode(loc.X, loc.Y);
-        }
-
-        private bool isWall(int x, int y)
+        
+        private bool IsWall(int x, int y)
         {
             return _blocks[x, y];
         }
-
-        private bool isWall(Location loc)
+        
+        private bool OnBoard(int x, int y)
         {
-            return isWall(loc.X, loc.Y);
+            bool offBoard = x < 0 || x > Dimension-1 || y < 0 || y > Dimension-1;
+            return !offBoard;
         }
 
-        private bool onBoard(int x, int y)
+        private bool AvailableForNode(int x, int y)
         {
-            return x >= 0
-                   && x < Dimension
-                   && y >= 0
-                   && y < Dimension;
+            return OnBoard(x, y) && !IsWall(x, y) && !HasNode(x, y);
         }
-
-        private bool availableForNode(int x, int y)
-        {
-            return onBoard(x, y) && !isWall(x, y) && !hasNode(x, y);
-        }
-
-        private bool availableForNode(Location loc)
-        {
-            return availableForNode(loc.X, loc.Y);
-        }
-
-        private bool onBoard(Location loc)
-        {
-            return onBoard(loc.X, loc.Y);
-        }
-
+        
         public void Clear()
         {
             RemoveIf(n => true);
         }
-
-        public bool TryGetAt(Location loc, out Node? node)
-        {
-            if (onBoard(loc) && hasNode(loc))
-            {
-                node = _grid[loc.X, loc.Y];
-                return true;
-            }
-
-            node = null;
-            return false;
-        }
-
-        public Location RandomEmptyLocation()
+        
+        private (int,int) RandomEmptyLocation()
         {
             while (true)
             {
                 int x = RNG.Int() % Dimension;
                 int y = RNG.Int() % Dimension;
 
-                if (availableForNode(x, y))
+                if (AvailableForNode(x, y))
                 {
-                    return Location.From(x, y);
+                    return (x, y);
                 }
             }
         }
 
-        public IEnumerable<Location> Walls
+        public IEnumerable<(int,int)> Walls
         {
             get
             {
                 for (int x = 0; x < Dimension; x++)
                 for (int y = 0; y < Dimension; y++)
                 {
-                    if (isWall(x, y))
+                    if (IsWall(x, y))
                     {
-                        yield return Location.From(x, y);
+                        yield return (x, y);
                     }
                 }
             }
         }
 
-        public void AddWall(int x, int y, int width, int height)
+        public void AddWall(int locx, int locy, int width, int height)
         {
-            for (; x < x + width; x++)
-            for (; y < height; y++)
+            for (int x = locx; x < locx + width; x++)
+            for (int y = locy; y < locy + height; y++)
             {
-                if (onBoard(x, y))
+                if (OnBoard(x, y))
                 {
                     _blocks[x, y] = true;
                 }
             }
         }
-
-        private IEnumerable<Location> surroundingLocations(Location loc)
+        private void PerformNodeMove(Node node, Direction direction)
         {
-            yield return Location.From(loc.X - 1, loc.Y - 1);
-            yield return Location.From(loc.X, loc.Y - 1);
-            yield return Location.From(loc.X + 1, loc.Y - 1);
-
-            yield return Location.From(loc.X - 1, loc.Y);
-            yield return Location.From(loc.X + 1, loc.Y);
-
-            yield return Location.From(loc.X - 1, loc.Y + 1);
-            yield return Location.From(loc.X, loc.Y + 1);
-            yield return Location.From(loc.X + 1, loc.Y + 1);
-        }
-
-        public Location RandomEmptyNeighbor(Location loc)
-        {
-            var neighbors = surroundingLocations(loc)
-                .Where(l => availableForNode(l))
-                .ToList();
-
-            if (neighbors.Count > 0)
-            {
-                return neighbors.Random();
-            }
-
-            return loc;
-        }
-        
-        private bool moveNodeTo(Node node, Direction direction)
-        {
-            var xy = direction switch
+            var (dirX, dirY) = direction switch
             {
                 Direction.North => (0, 1),
                 Direction.South => (0, -1),
                 Direction.East => (1, 0),
-                Direction.West => (-1, 0)
+                Direction.West => (-1, 0),
+                _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, null)
             };
 
-            int x = node.Location.X + xy.Item1;
-            int y = node.Location.Y + xy.Item2;
+            int x = node.X + dirX;
+            int y = node.Y + dirY;
             
-            if (availableForNode(x, y))
+            if (AvailableForNode(x, y))
             {
-                _grid[node.Location.X, node.Location.Y] = null;
+                _grid[node.X, node.Y] = null;
                 _grid[x, y] = node;
-                node.Location = Location.From(x, y);
-                
-                return true;
+                node.X = x;
+                node.Y = y;
             }
-            
-            return false;
         }
 
-        public bool MoveNodeTo(Node node, Direction direction)
+        public void MoveNodeTo(Node node, Direction direction)
         {
-            lock (_queueLock)
-            {
-                moveQueue.Add(new Move
-                {
-                    node = node,
-                    direction = direction,
-                });
-            }
-
-            return true;
+            _moveQueue.Add(new Move(node, direction));
         }
 
         public void AddAtRandom(Node node)
         {
-            node.Location = RandomEmptyLocation();
-            _grid[node.Location.X, node.Location.Y] = node;
+            (node.X, node.Y) = RandomEmptyLocation();
+            _grid[node.X, node.Y] = node;
             _nodes.Add(node);
         }
 
@@ -234,29 +158,39 @@ namespace evolve
             }
         }
 
-        public void RemoveNode(Node node)
+        private void RemoveNode(Node node)
         {
-            _grid[node.Location.X, node.Location.Y] = null;
+            _grid[node.X, node.Y] = null;
             _nodes.RemoveAll(n => n.Id == node.Id);
         }
 
-        private float populationAround(Location loc)
+        private int PopulationAround(int x, int y)
         {
-            return surroundingLocations(loc)
-                .Count(l => onBoard(loc) && hasNode(loc)) / 8f;
+            int count = 0;
+            count += OnBoard(x-1, y+1) && HasNode(x-1, y+1) ? 1 : 0;
+            count += OnBoard(x, y+1) && HasNode(x, y+1) ? 1 : 0;
+            count += OnBoard(x+1, y+1) && HasNode(x+1, y+1) ? 1 : 0;
+
+            count += OnBoard(x-1, y) && HasNode(x-1, y) ? 1 : 0;
+            count += OnBoard(x+1, y) && HasNode(x+1, y) ? 1 : 0;
+
+            count += OnBoard(x-1, y-1) && HasNode(x-1, y-1) ? 1 : 0;
+            count += OnBoard(x, y-1) && HasNode(x, y-1) ? 1 : 0;
+            count += OnBoard(x+1, y-1) && HasNode(x+1, y-1) ? 1 : 0;
+
+            return count;
         }
 
         public float ReadSensor(SensorType type, Node node)
         {
-            Location location = node.Location;
             return type switch
             {
-                SensorType.TimeSinceLastMove => (float) node.LastMoveStep / (float) Simulation.CurrentStep,
-                SensorType.DistanceFromNorth => 1f - (float) location.Y / (float) Dimension,
-                SensorType.DistanceFromSouth => (float) location.Y / (float) Dimension,
-                SensorType.DistanceFromWest => 1f - (float) location.X / (float) Dimension,
-                SensorType.DistanceFromEast => (float) location.X / (float) Dimension,
-                SensorType.LocalPopulation => populationAround(location),
+                SensorType.TimeSinceLastMove => node.LastMoveStep / (float) Simulation.CurrentStep,
+                SensorType.DistanceFromNorth => 1f - node.Y / (float) Dimension,
+                SensorType.DistanceFromSouth => node.Y / (float) Dimension,
+                SensorType.DistanceFromWest => 1f - node.X / (float) Dimension,
+                SensorType.DistanceFromEast => node.X / (float) Dimension,
+                SensorType.LocalPopulation => PopulationAround(node.X, node.Y),
                 _ => throw new NotSupportedException("Invalid SensorType")
             };
         }

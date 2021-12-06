@@ -1,5 +1,4 @@
 using System;
-using System.Text;
 
 namespace evolve
 {
@@ -24,21 +23,21 @@ namespace evolve
             Sink.UpdateWeight(Source.Activate(node));
         }
 
-        private int sortValue()
+        private int SortValue()
         {
             // sensor -> sink = 1
             // inner -> inner (same) = 2
             // inner -> inner (different)
             // inner -> action = 3
 
-            if (Source is ISensor)
+            if (Source is Sensor)
             {
                 return 1;
             }
             
             // inner -> inner (same)
             // can't be sensor -> inner because we removed sensors already
-            if (Sink is IInnerNeuron && Source.Id == Sink.Id)
+            if (Sink is InnerNeuron && Source.Id == Sink.Id)
             {
                 return 2;
             }
@@ -61,7 +60,7 @@ namespace evolve
 
         public int CompareTo(Gene other)
         {
-            return sortValue().CompareTo(other.sortValue());
+            return SortValue().CompareTo(other.SortValue());
         }
 
         public int Fingerprint()
@@ -71,13 +70,12 @@ namespace evolve
 
         public string Description()
         {
-            StringBuilder sb = new StringBuilder();
             return $"{Source.Description()} -> {Sink.Description()}";
         }
         
         public Gene Mutate()
         {
-            (Source as IInnerNeuron)?.Mutate();
+            (Source as InnerNeuron)?.Mutate();
             Sink.Mutate();
 
             return this;

@@ -1,19 +1,13 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 
 namespace evolve
 {
-    public static class Network
-    {
-        public static readonly NetworkBuilder Builder = new NetworkBuilder();
-    }
-
     public class NetworkBuilder
     {
-        private static readonly SensorType[] _sensorTypes = new[]
-        {
+        private static readonly SensorType[] SensorTypes = {
             SensorType.DistanceFromNorth,
             SensorType.DistanceFromSouth,
             SensorType.DistanceFromEast,
@@ -22,8 +16,7 @@ namespace evolve
             SensorType.TimeSinceLastMove,
         };
 
-        private static readonly ActionType[] _actionTypes = new[]
-        {
+        private static readonly ActionType[] ActionTypes = {
             ActionType.StayPut,
             ActionType.MoveNorth,
             ActionType.MoveSouth,
@@ -32,9 +25,13 @@ namespace evolve
             ActionType.MoveRandom,
         };
 
-        private readonly Dictionary<int, IInnerNeuron> _inners = new Dictionary<int, IInnerNeuron>();
-        private readonly Dictionary<SensorType, ISensor> _sensors = new Dictionary<SensorType, ISensor>();
-        private readonly Dictionary<ActionType, IAction> _actions = new Dictionary<ActionType, IAction>();
+        
+        // each time a network is built, these are used to ensure that the network does not have
+        // duplicate genes - if the network has the same type of sensor used 3 times, then there
+        // should still only be one sensor instance for that type.  These are reset between genes.
+        private readonly Dictionary<int, InnerNeuron> _inners = new Dictionary<int, InnerNeuron>();
+        private readonly Dictionary<SensorType, Sensor> _sensors = new Dictionary<SensorType, Sensor>();
+        private readonly Dictionary<ActionType, Action> _actions = new Dictionary<ActionType, Action>();
 
         private void Reset()
         {
@@ -43,10 +40,10 @@ namespace evolve
             _actions.Clear();
         }
 
-        IInnerNeuron randomInner(Func<float> weight)
+        private InnerNeuron RandomInner(Func<float> weight)
         {
             int innerIndex = RNG.Int() % Simulation.InnerNeurons;
-            if (!_inners.TryGetValue(innerIndex, out IInnerNeuron neuron))
+            if (!_inners.TryGetValue(innerIndex, out InnerNeuron neuron))
             {
                 neuron = new InnerNeuron(weight());
                 _inners.Add(innerIndex, neuron);
@@ -55,43 +52,43 @@ namespace evolve
             return neuron;
         }
 
-        IActivatable randomSource(Func<SensorType> sensorType, Func<float> weight)
+        private IActivatable RandomSource(Func<SensorType> sensorType, Func<float> weight)
         {
             bool isSensor = RNG.Bool();
             if (isSensor)
             {
                 var type = sensorType();
-                return cachedSensor(type);
+                return CachedSensor(type);
             }
 
-            return randomInner(weight);
+            return RandomInner(weight);
         }
 
-        SensorType randomSensorType()
+        private static SensorType RandomSensorType()
         {
-            return _sensorTypes[RNG.Int(_sensorTypes.Length)];
+            return SensorTypes[RNG.Int(SensorTypes.Length)];
         }
 
-        ActionType randomActionType()
+        private static ActionType RandomActionType()
         {
-            return _actionTypes[RNG.Int(_actionTypes.Length)];
+            return ActionTypes[RNG.Int(ActionTypes.Length)];
         }
 
-        ISink randomSink(Func<ActionType> actionType, Func<float> weight)
+        private ISink RandomSink(Func<ActionType> actionType, Func<float> weight)
         {
             bool isAction = RNG.Bool();
             if (isAction)
             {
                 var type = actionType();
-                return cachedAction(type, weight);
+                return CachedAction(type);
             }
 
-            return randomInner(weight);
+            return RandomInner(weight);
         }
 
-        ISensor cachedSensor(SensorType type)
+        private Sensor CachedSensor(SensorType type)
         {
-            if (!_sensors.TryGetValue(type, out ISensor action))
+            if (!_sensors.TryGetValue(type, out Sensor action))
             {
                 action = new Sensor(type);
                 _sensors.Add(type, action);
@@ -100,22 +97,32 @@ namespace evolve
             return action;
         }
 
-        IAction cachedAction(ActionType type, Func<float> weight)
+        private Action CachedAction(ActionType type)
         {
-            if (!_actions.TryGetValue(type, out IAction action))
+            if (!_actions.TryGetValue(type, out Action action))
             {
-                action = new Action(type, weight());
+                action = new Action(type);
                 _actions.Add(type, action);
             }
 
             return action;
         }
 
-        public List<Gene> CreateFromExisting(int connections, IList<Gene> existing)
+        private IEnumerable<Gene> createFromExisting(IList<Gene> existing)
         {
             Reset();
-            var mix = existing.Shuffle().Take(connections).Select(g => g.DeepCopy()).ToList();
+            
+            var mix = existing.Shuffle()
+                .Take(Simulation.GenesPerGenome)
+                .Select(g => g.DeepCopy()).ToList();
 
+            if (Simulation.RequireExactGenesPerGenome)
+            {
+                while (mix.Count < Simulation.GenesPerGenome)
+                {
+                    mix.Add(CreateRandomGene());
+                }
+            }
 
             // we now have potentially too many inner neurons and they are wired up between two sets
             // of genes. For each IN, if we haven't seen it before AND we are not at max inner neurons,
@@ -125,8 +132,7 @@ namespace evolve
             List<InnerNeuron> neurons = new List<InnerNeuron>();
             foreach (Gene g in mix)
             {
-                var source = g.Source as InnerNeuron;
-                if (source != null)
+                if (g.Source is InnerNeuron source)
                 {
                     if (neurons.All(n => n.Id != source.Id))
                     {
@@ -141,8 +147,7 @@ namespace evolve
                     }
                 }
 
-                var sink = g.Sink as InnerNeuron;
-                if (sink != null)
+                if (g.Sink is InnerNeuron sink)
                 {
                     if (neurons.All(n => n.Id != sink.Id))
                     {
@@ -159,12 +164,12 @@ namespace evolve
             }
 
 
-            optimizeNeurons(mix);
+            OptimizeNeurons(mix);
 
             return mix;
         }
 
-        private static List<Gene> optimizeNeurons(List<Gene> mix)
+        private static List<Gene> OptimizeNeurons(List<Gene> mix)
         {
             var inUse = new HashSet<Guid>();
 
@@ -179,23 +184,14 @@ namespace evolve
             }
 
             // now find the nodes that contribute to the actions
+
             while (true)
             {
-                int before = inUse.Count;
-                foreach (Gene g in mix)
-                {
-                    // if the sink contributes to an action, then add the source
-                    if (inUse.Contains(g.Sink.Id))
-                    {
-                        inUse.Add(g.Source.Id);
-                    }
-                }
+                bool foundMore = inUse.AddRange(
+                    mix.Where(g => inUse.Contains(g.Sink.Id))
+                        .Select(g => g.Source.Id));
 
-                // we didn't find anything
-                if (before == inUse.Count)
-                {
-                    break;
-                }
+                if (!foundMore) break;
             }
 
             // remove the genes that don't contribute to actions
@@ -212,7 +208,14 @@ namespace evolve
             return mix;
         }
 
-        public List<Gene> CreateRandom(int connections)
+        private Gene CreateRandomGene()
+        {
+            return new Gene(
+                RandomSource(RandomSensorType, RNG.Float), 
+                RandomSink(RandomActionType, RNG.Float));
+        }
+
+        private IEnumerable<Gene> createRandom(int connections)
         {
             // clear caches from previous runs
             Reset();
@@ -221,10 +224,43 @@ namespace evolve
 
             for (int i = 0; i < connections; i++)
             {
-                genes.Add(new Gene(randomSource(randomSensorType, RNG.Float), randomSink(randomActionType, RNG.Float)));
+                genes.Add(CreateRandomGene());
             }
 
-            return optimizeNeurons(genes);
+            return OptimizeNeurons(genes);
+        }
+
+        // we create millions of these - so keep an MRU cache so we can minimize allocations
+        private static ConcurrentStack<NetworkBuilder> _builders = new ConcurrentStack<NetworkBuilder>();
+        
+        public static IEnumerable<Gene> CreateFromExisting(IList<Gene> existing)
+        {
+            NetworkBuilder nb;
+            if (!_builders.TryPop(out nb))
+            {
+                nb = new NetworkBuilder();
+            }
+
+            var result = nb.createFromExisting(existing);
+
+            nb.Reset();
+            _builders.Push(nb);
+
+            return result;
+        }
+        public static IEnumerable<Gene> CreateRandom(int connections)
+        {
+            if (!_builders.TryPop(out NetworkBuilder nb))
+            {
+                nb = new NetworkBuilder();
+            }
+
+            var result = nb.createRandom(connections);
+
+            nb.Reset();
+            _builders.Push(nb);
+
+            return result;
         }
     }
 }
