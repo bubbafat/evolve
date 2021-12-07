@@ -13,17 +13,26 @@ namespace evolve
         
         public double StayPut { get; set; }
         
+        public double Bully { get; set; }
+        public double Kill { get; set; }
+        
+        public double Defend { get; set; }
+        
         public void Reset()
         {
             MoveX = 0d;
             MoveY = 0d;
             StayPut = 0d;
+            Bully = 0d;
+            Kill = 0d;
+            Defend = 0d;
         }
     }
     public class Node
     {
+        public bool Alive { get; set; }
         private readonly Genome _genome;
-        private Desires _desire;
+        public Desires Desire { get; private set; }
 
         public Node(World world, Genome genome)
         {
@@ -31,9 +40,10 @@ namespace evolve
             World = world;
             Id = Guid.NewGuid();
             LastMoveStep = 0;
-            _desire = new Desires();
+            Desire = new Desires();
             X = -1;
             Y = -1;
+            Alive = true;
         }
         
         public int X { get; set; }
@@ -55,25 +65,37 @@ namespace evolve
                 switch (action.Type)
                 {
                     case ActionType.MoveNorth:
-                        _desire.MoveY += weight;
+                        Desire.MoveY += weight;
                         break;
                     case ActionType.MoveSouth:
-                        _desire.MoveY -= weight;
+                        Desire.MoveY -= weight;
                         break;
                     case ActionType.MoveEast:
-                        _desire.MoveX += weight;
+                        Desire.MoveX += weight;
                         break;
                     case ActionType.MoveWest:
-                        _desire.MoveX -= weight;
+                        Desire.MoveX -= weight;
                         break;
                     case ActionType.StayPut:
-                        _desire.StayPut += weight;
+                        Desire.StayPut += weight;
                         break;
                     case ActionType.MoveRandom:
                         MoveRandom();
                         break;
-                    case ActionType.MoveToCenter:
-                        MoveToCenter();
+                    case ActionType.MoveToCenterX:
+                        MoveToCenter(true, false);
+                        break;
+                    case ActionType.MoveToCenterY:
+                        MoveToCenter(false, true);
+                        break;
+                    case ActionType.Bully:
+                        Desire.Bully += weight;
+                        break;
+                    case ActionType.Kill:
+                        Desire.Kill += weight;
+                        break;
+                    case ActionType.Defend:
+                        Desire.Defend += weight;
                         break;
                     default:
                         throw new InvalidOperationException($"Unknown action: {action.Type}");
@@ -85,9 +107,9 @@ namespace evolve
         {
             UpdateDesires();
 
-            double stayWeight = Simulation.ActivationFunction(Math.Abs(_desire.StayPut));
-            double moveXWeight = Simulation.ActivationFunction(Math.Abs(_desire.MoveY));
-            double moveYWeight = Simulation.ActivationFunction(Math.Abs(_desire.MoveX));
+            double stayWeight = Simulation.ActivationFunction(Math.Abs(Desire.StayPut));
+            double moveXWeight = Simulation.ActivationFunction(Math.Abs(Desire.MoveY));
+            double moveYWeight = Simulation.ActivationFunction(Math.Abs(Desire.MoveX));
 
             // if the desire to stay is stronger than the desire to move check if you stay
             if (stayWeight > moveXWeight && stayWeight > moveYWeight)
@@ -98,13 +120,13 @@ namespace evolve
             
             if (Simulation.WeightToBool(moveYWeight))
             {
-                bool north = _desire.MoveY > 0d;
+                bool north = Desire.MoveY > 0d;
                 Move(north ? Direction.North : Direction.South);
             }
             
             if (Simulation.WeightToBool(moveXWeight))
             {
-                bool east = _desire.MoveX > 0d;
+                bool east = Desire.MoveX > 0d;
                 Move(east ? Direction.East : Direction.West);
             }
         }
@@ -116,41 +138,49 @@ namespace evolve
 
             switch (x, pos)
             {
-                case (true, true): _desire.MoveX += RNG.Double();
+                case (true, true): Desire.MoveX += RNG.Double();
                     break;
-                case (true, false): _desire.MoveX -= RNG.Double();
+                case (true, false): Desire.MoveX -= RNG.Double();
                     break;
-                case (false, true): _desire.MoveY += RNG.Double();
+                case (false, true): Desire.MoveY += RNG.Double();
                     break;
-                case (false, false): _desire.MoveY -= RNG.Double();
+                case (false, false): Desire.MoveY -= RNG.Double();
                     break;
             }
         }
 
-        private void MoveToCenter()
+        private void MoveToCenter(bool centerX, bool centerY)
         {
-            bool westOfCenter = X < World.Dimension / 2 - 5;
-            bool eastOfCenter = X > World.Dimension / 2 + 5;
-            
-            bool southOfCenter = Y < World.Dimension / 2 - 5;
-            bool northOfCenter = Y > World.Dimension / 2 + 5;
 
-            if (westOfCenter)
+            if (centerX)
             {
-                _desire.MoveX += RNG.Double();
-            } 
-            else if (eastOfCenter)
-            {
-                _desire.MoveX -= RNG.Double();
+                bool westOfCenter = X < World.Dimension / 2;
+                bool eastOfCenter = X > World.Dimension / 2;
+
+                if (westOfCenter)
+                {
+                    Desire.MoveX += RNG.Double();
+                }
+                else if (eastOfCenter)
+                {
+                    Desire.MoveX -= RNG.Double();
+                }
             }
 
-            if (southOfCenter)
+            if (centerY)
             {
-                _desire.MoveY += RNG.Double();
-            }
-            else if (northOfCenter)
-            {
-                _desire.MoveY -= RNG.Double();
+                bool southOfCenter = Y < World.Dimension / 2;
+                bool northOfCenter = Y > World.Dimension / 2;
+
+
+                if (southOfCenter)
+                {
+                    Desire.MoveY += RNG.Double();
+                }
+                else if (northOfCenter)
+                {
+                    Desire.MoveY -= RNG.Double();
+                }
             }
         }
 
@@ -164,7 +194,7 @@ namespace evolve
         {
             LastMoveStep = 0;
             _genome.Reset();
-            _desire.Reset();
+            Desire.Reset();
         }
 
         public Node Reproduce(Node other)

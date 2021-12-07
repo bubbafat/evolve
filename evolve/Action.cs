@@ -11,7 +11,11 @@ namespace evolve
         MoveEast = 1 << 15,
         MoveWest = 1 << 16,
         MoveRandom = 1 << 17,
-        MoveToCenter = 1 << 18,
+        MoveToCenterX = 1 << 18,
+        MoveToCenterY = 1 << 19,
+        Bully = 1 << 20,
+        Kill = 1 << 21,
+        Defend = 1 << 22,
     }
 
     public class Action : ISink
@@ -38,7 +42,7 @@ namespace evolve
             Weight = InitialWeight;
         }
 
-        public ActionType Type { get; }
+        public ActionType Type { get; private set; }
 
         public int Fingerprint()
         {
@@ -52,7 +56,10 @@ namespace evolve
 
         public void Mutate()
         {
-            // actions don't mutate
+            if (Simulation.WeightToBool(Simulation.MutationChance))
+            {
+                Type = NetworkBuilder.ActionTypes.Random();
+            }
         }
 
         public ISink DeepCopy()

@@ -7,7 +7,7 @@ namespace evolve
 {
     public class NetworkBuilder
     {
-        private static readonly SensorType[] SensorTypes = {
+        public static readonly IList<SensorType> SensorTypes = new List<SensorType>{
             SensorType.DistanceFromNorth,
             SensorType.DistanceFromSouth,
             SensorType.DistanceFromEast,
@@ -15,28 +15,39 @@ namespace evolve
             SensorType.DistanceFromCenter,
             SensorType.LocalPopulation,
             SensorType.TimeSinceLastMove,
+            SensorType.Blocked,
         };
 
-        private static readonly ActionType[] ActionTypes = {
+        public static readonly IList<ActionType> ActionTypes = new List<ActionType> {
             ActionType.StayPut,
             ActionType.MoveNorth,
             ActionType.MoveSouth,
             ActionType.MoveEast,
             ActionType.MoveWest,
             ActionType.MoveRandom,
-            ActionType.MoveToCenter,
+            ActionType.MoveToCenterX,
+            ActionType.MoveToCenterY,
+            ActionType.Bully,
+            ActionType.Kill,
+            ActionType.Defend,
         };
 
-        // we create millions of these - so keep an MRU cache so we can minimize allocations
+        static NetworkBuilder()
+        {
+            if (!Simulation.AllowKillers) ActionTypes.Remove(ActionType.Kill);
+            if (!Simulation.AllowBullies) ActionTypes.Remove(ActionType.Bully);
+            if (!Simulation.AllowDefense) ActionTypes.Remove(ActionType.Defend);
+        }
+
+        // we use these millions of times - so keep an MRU cache so we can minimize allocations
         private static readonly ConcurrentStack<NetworkBuilder> _builders = new ConcurrentStack<NetworkBuilder>();
-        private readonly Dictionary<ActionType, Action> _actions = new Dictionary<ActionType, Action>();
-
-
+        
         // each time a network is built, these are used to ensure that the network does not have
         // duplicate genes - if the network has the same type of sensor used 3 times, then there
         // should still only be one sensor instance for that type.  These are reset between genes.
         private readonly Dictionary<int, InnerNeuron> _inners = new Dictionary<int, InnerNeuron>();
         private readonly Dictionary<SensorType, Sensor> _sensors = new Dictionary<SensorType, Sensor>();
+        private readonly Dictionary<ActionType, Action> _actions = new Dictionary<ActionType, Action>();
 
         private void Reset()
         {
@@ -103,29 +114,46 @@ namespace evolve
             return action;
         }
 
-        private IEnumerable<Gene> createFromExisting(IList<Gene> existing)
+        private void buildActionSensorTypeCaches(List<Gene> genes)
         {
-            Reset();
-            
-            var mix = existing.Shuffle()
-                .Take(Simulation.GenesPerGenome)
-                .Select(g => g.DeepCopy()).ToList();
-
-            if (Simulation.RequireExactGenesPerGenome)
+            // remove duplicate sensor and action instances - use the first one we found
+            foreach (var g in genes)
             {
-                while (mix.Count < Simulation.GenesPerGenome)
+                if (g.Source is Sensor sensor)
                 {
-                    mix.Add(CreateRandomGene());
+                    if (_sensors.ContainsKey(sensor.Type))
+                    {
+                        g.Source = _sensors[sensor.Type];
+                    }
+                    else
+                    {
+                        _sensors.Add(sensor.Type, sensor);
+                    }
+                }
+
+                if (g.Sink is Action action)
+                {
+                    if (_actions.ContainsKey(action.Type))
+                    {
+                        g.Sink = _actions[action.Type];
+                    }
+                    else
+                    {
+                        _actions.Add(action.Type, action);
+                    }
                 }
             }
+        }
 
+        private void reduceInnerNeurons(List<Gene> genes)
+        {
             // we now have potentially too many inner neurons and they are wired up between two sets
             // of genes. For each IN, if we haven't seen it before AND we are not at max inner neurons,
             // add it to the neuron cache and let it be used.  If we have seen it before, use it.  If
             // we have not seen it but we are at the limit, pick a random cached one.
             // Now each neuron in the network should be in-use and linked.
             List<InnerNeuron> neurons = new List<InnerNeuron>();
-            foreach (Gene g in mix)
+            foreach (Gene g in genes)
             {
                 if (g.Source is InnerNeuron source)
                 {
@@ -157,14 +185,39 @@ namespace evolve
                     }
                 }
             }
+        }
 
+        private IEnumerable<Gene> createFromExisting(List<Gene> existing)
+        {
+            var mix = removeDuplicatePairs(existing)
+                .Shuffle()
+                .Take(Simulation.GenesPerGenome)
+                .Select(g => g.DeepCopy()).ToList();
 
-            OptimizeNeurons(mix);
+            buildActionSensorTypeCaches(mix);
+            
+            reduceInnerNeurons(mix);
+
+            return OptimizeNeurons(mix);
+        }
+
+        private static List<Gene> removeDuplicatePairs(List<Gene> mix)
+        {
+            // we'll now remove duplicates
+            var duplicates = mix.GroupBy(g => (g.Source.Id, g.Sink.Id))
+                .Where(grp => grp.Count() > 1)
+                .ToList();
+
+            foreach (var dups in duplicates)
+            {
+                var toRemove = dups.Skip(1).Select(g => g.Id);
+                mix.RemoveAll(g => toRemove.Contains(g.Id));
+            }
 
             return mix;
         }
 
-        private static List<Gene> OptimizeNeurons(List<Gene> mix)
+        private static List<Gene> pruneNoncontributingPairs(List<Gene> mix)
         {
             var inUse = new HashSet<Guid>();
 
@@ -192,6 +245,15 @@ namespace evolve
             // remove the genes that don't contribute to actions
             mix.RemoveAll(g => !inUse.Contains(g.Sink.Id));
 
+            return mix;
+        }
+
+        private static List<Gene> OptimizeNeurons(List<Gene> mix)
+        {
+            mix = pruneNoncontributingPairs(mix);
+            mix = removeDuplicatePairs(mix);
+            
+
             // sort so that it is
             // sensor -> *
             // inner -> inner (same)
@@ -208,13 +270,27 @@ namespace evolve
             return new Gene(RandomSource(), RandomSink());
         }
 
+        private static NetworkBuilder getNetworkBuilder()
+        {
+            NetworkBuilder nb;
+            if (!_builders.TryPop(out nb))
+            {
+                nb = new NetworkBuilder();
+            }
+
+            nb.Reset();
+
+            return nb;
+        }
+
+        private static void returnNetworkBuilder(NetworkBuilder nb)
+        {
+            _builders.Push(nb);
+        }
+
         private IEnumerable<Gene> createRandom(int connections)
         {
-            // clear caches from previous runs
-            Reset();
-
             List<Gene> genes = new List<Gene>(connections);
-
             for (int i = 0; i < connections; i++)
             {
                 genes.Add(CreateRandomGene());
@@ -223,34 +299,25 @@ namespace evolve
             return OptimizeNeurons(genes);
         }
 
-        public static IEnumerable<Gene> CreateFromExisting(IList<Gene> existing)
+        public static IEnumerable<Gene> CreateFromExisting(List<Gene> existing)
         {
-            NetworkBuilder nb;
-            if (!_builders.TryPop(out nb))
-            {
-                nb = new NetworkBuilder();
-            }
+            var nb = getNetworkBuilder();
 
             var result = nb.createFromExisting(existing);
 
-            nb.Reset();
-            _builders.Push(nb);
-
+            returnNetworkBuilder(nb);
+            
             return result;
         }
 
         public static IEnumerable<Gene> CreateRandom(int connections)
         {
-            if (!_builders.TryPop(out NetworkBuilder nb))
-            {
-                nb = new NetworkBuilder();
-            }
+            var nb = getNetworkBuilder();
 
             var result = nb.createRandom(connections);
-
-            nb.Reset();
-            _builders.Push(nb);
-
+            
+            returnNetworkBuilder(nb);
+            
             return result;
         }
     }

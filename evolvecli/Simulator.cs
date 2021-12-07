@@ -21,18 +21,9 @@ namespace evolvecli
         
         private void endGeneration()
         {
-            Console.WriteLine();
-            Console.WriteLine($"Eval times: {EvalTimer.ElapsedMilliseconds}");
-            Console.WriteLine($"Exec times: {ExecTimer.ElapsedMilliseconds}");
             Console.WriteLine($"Step times: {StepTimer.ElapsedMilliseconds}");
-            Console.WriteLine($"Repro times: {ReproTimer.ElapsedMilliseconds}");
-            Console.WriteLine($"Child times: {AddChildrenTimer.ElapsedMilliseconds}");
             
-            EvalTimer.Reset();
-            ExecTimer.Reset();
-            ReproTimer.Reset();
             StepTimer.Reset();
-            AddChildrenTimer.Reset();
         }
 
         public void Run()
@@ -43,6 +34,7 @@ namespace evolvecli
                 Simulation.CurrentGeneration <= Simulation.Generations;
                 Simulation.CurrentGeneration++)
             {
+                Console.WriteLine();
                 Console.WriteLine($"Generation {Simulation.CurrentGeneration}");
                 
                 _world.BeginStep();
@@ -55,17 +47,18 @@ namespace evolvecli
                 {
                     renderFrame();
                     
-                    step();
-                    
-                    _world.EndStep();
+                    Step();
                 }
                 StepTimer.Stop();
 
                 renderFrame();
 
-                
-                EvalTimer.Start();
-                
+                if (Simulation.AllowKillers)
+                {
+                    int kills = Simulation.TotalNodes - _world.Nodes.Count();
+                    Console.WriteLine($"Total Kills: {kills}");
+                }
+
                 _world.RemoveIf(n => !Simulation.InBreedingGrounds(n.X, n.Y));
                 
                 if (Simulation.WinThresholdExceeded)
@@ -78,7 +71,7 @@ namespace evolvecli
                 if (highWaterMark < survived || Simulation.RenderFrame)
                 {
                     highWaterMark = survived;
-                    
+
                     var common = survivors
                         .GroupBy(n => n.Fingerprint())
                         .OrderByDescending(g => g.Count())
@@ -103,8 +96,6 @@ namespace evolvecli
 
                 _world.Clear();
                 _world.AddAtRandom(children);
-
-                EvalTimer.Stop();
                 
                 endGeneration();
             }
@@ -112,14 +103,11 @@ namespace evolvecli
 
         private IEnumerable<Node> reproduce(List<Node> survivers)
         {
-            ReproTimer.Start();
             Node[] output = new Node[Simulation.TotalNodes];
 
             Parallel.For(0, Simulation.TotalNodes,
                 (i, state) => { output[i] = survivers.Random().Reproduce(survivers.Random()); });
 
-            ReproTimer.Stop();
-            
             return output;
         }
 
@@ -135,22 +123,15 @@ namespace evolvecli
             }
         }
 
-        public static readonly Stopwatch EvalTimer = new Stopwatch();
-        public static readonly Stopwatch ExecTimer = new Stopwatch();
-        public static readonly Stopwatch ReproTimer = new Stopwatch();
         public static readonly Stopwatch StepTimer = new Stopwatch();
-        public static readonly Stopwatch AddChildrenTimer = new Stopwatch();
 
-        private void step()
+        private void Step()
         {
             _world.Nodes.AsParallel().ForAll(n => n.Reset());
-            
             _world.Nodes.AsParallel().ForAll(n => n.Evaluate());
-
-            foreach (var node in _world.Nodes)
-            {
-                node.Execute();
-            }
+            _world.Nodes.AsParallel().ForAll(n => n.Execute());
+            
+            _world.EndStep();
         }
     }
 }

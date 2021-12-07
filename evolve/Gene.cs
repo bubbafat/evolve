@@ -6,9 +6,12 @@ namespace evolve
     {
         public IActivatable Source { get; internal set; }
         public ISink Sink { get; set; }
+
+        public readonly Guid Id;
         
         public Gene(IActivatable source, ISink sink)
         {
+            Id = Guid.NewGuid();
             Source = source;
             Sink = sink;
         }
@@ -75,7 +78,7 @@ namespace evolve
         
         public Gene Mutate()
         {
-            (Source as InnerNeuron)?.Mutate();
+            Source.Mutate();
             Sink.Mutate();
 
             return this;

@@ -16,19 +16,23 @@ namespace evolve
         public string Description();
         public int Fingerprint();
     }
+
+    public interface IMutable
+    {
+        public void Mutate();
+    }
     
-    public interface IActivatable : IDescribable
+    public interface IActivatable : IDescribable, IMutable
     {
         public IActivatable DeepCopy();
 
         public double Activate(Node node);
     }
     
-    public interface ISink : IDescribable
+    public interface ISink : IDescribable, IMutable
     {
         public ISink DeepCopy();
 
-        public void Mutate();
         public void UpdateWeight(double weight);
         public void Reset();
     }

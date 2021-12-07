@@ -12,6 +12,7 @@ namespace evolve
         DistanceFromCenter = 1 << 5,
         LocalPopulation = 1 << 6,
         TimeSinceLastMove = 1 << 7,
+        Blocked = 1 << 8,
     }
 
     public class Sensor : IActivatable
@@ -40,7 +41,15 @@ namespace evolve
             return Simulation.ActivationFunction(ReadWeight(node));
         }
 
-        private SensorType Type { get; }
+        public void Mutate()
+        {
+            if (Simulation.WeightToBool(Simulation.MutationChance))
+            {
+                Type = NetworkBuilder.SensorTypes.Random();
+            }
+        }
+
+        public SensorType Type { get;  set; }
 
         public int Fingerprint()
         {
