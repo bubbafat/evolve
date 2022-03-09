@@ -12,61 +12,61 @@ namespace evolve
         public static bool Bool() => _rng.Bool();
 
         public static int Int(int max) => _rng.Int() % max;
-    }
 
-    public class RandomGenerator
-    {
-        private readonly Random _rng = new Random();
-        private readonly ConcurrentQueue<int> _ints = new ConcurrentQueue<int>();
-        private readonly ConcurrentQueue<double> _doubles = new ConcurrentQueue<double>();
-        private const int CacheLimit = 10000;
-        private readonly object _lock = new object();
-        
-        public int Int()
+        private class RandomGenerator
         {
-            if (_ints.TryDequeue(out var result)) 
-                return result;
-            
-            lock (_lock)
-            {
-                result = _rng.Next();
+            private readonly Random _rng = new Random();
+            private readonly ConcurrentQueue<int> _ints = new ConcurrentQueue<int>();
+            private readonly ConcurrentQueue<double> _doubles = new ConcurrentQueue<double>();
+            private const int CacheLimit = 10000;
+            private readonly object _lock = new object();
 
-                if (_ints.IsEmpty)
+            public int Int()
+            {
+                if (_ints.TryDequeue(out var result))
+                    return result;
+
+                lock (_lock)
                 {
-                    for (int i = 0; i < CacheLimit; i++)
+                    result = _rng.Next();
+
+                    if (_ints.IsEmpty)
                     {
-                        _ints.Enqueue(_rng.Next());
+                        for (int i = 0; i < CacheLimit; i++)
+                        {
+                            _ints.Enqueue(_rng.Next());
+                        }
                     }
                 }
+
+                return result;
             }
 
-            return result;
-        }
-
-        public bool Bool()
-        {
-            return Double() < 0.5;
-        }
-
-        public double Double()
-        {
-            if (_doubles.TryDequeue(out var result)) 
-                return result;
-            
-            lock (_lock)
+            public bool Bool()
             {
-                result = _rng.NextDouble();
+                return Int() % 2 == 0;
+            }
 
-                if (_doubles.IsEmpty)
+            public double Double()
+            {
+                if (_doubles.TryDequeue(out var result))
+                    return result;
+
+                lock (_lock)
                 {
-                    for (int i = 0; i < CacheLimit; i++)
+                    result = _rng.NextDouble();
+
+                    if (_doubles.IsEmpty)
                     {
-                        _doubles.Enqueue(_rng.NextDouble());
+                        for (int i = 0; i < CacheLimit; i++)
+                        {
+                            _doubles.Enqueue(_rng.NextDouble());
+                        }
                     }
                 }
-            }
 
-            return result;
+                return result;
+            }
         }
     }
 }
