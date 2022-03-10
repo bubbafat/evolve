@@ -68,26 +68,29 @@ namespace evolvecli
         
         private void renderNode(Node n)
         {
-            SKPoint point = new SKPoint(
-                n.X * CellMultiple + NodeRadius,
-                n.Y * CellMultiple + NodeRadius);
-
-            int paintKey = n.Fingerprint();
-            if (!_paintCache.TryGetValue(paintKey, out SKPaint paint))
+            if (n.Alive)
             {
-                var bytes = BitConverter.GetBytes(paintKey);
-                SKColor color = new SKColor(bytes[0], bytes[1], bytes[2]);
+                SKPoint point = new SKPoint(
+                    n.X * CellMultiple + NodeRadius,
+                    n.Y * CellMultiple + NodeRadius);
 
-                paint = new SKPaint
+                int paintKey = n.Fingerprint();
+                if (!_paintCache.TryGetValue(paintKey, out SKPaint paint))
                 {
-                    Color = color,
-                    Style = SKPaintStyle.Fill
-                };
+                    var bytes = BitConverter.GetBytes(paintKey);
+                    SKColor color = new SKColor(bytes[0], bytes[1], bytes[2]);
 
-                _paintCache.Add(paintKey, paint);
+                    paint = new SKPaint
+                    {
+                        Color = color,
+                        Style = SKPaintStyle.Fill
+                    };
+
+                    _paintCache.Add(paintKey, paint);
+                }
+
+                _canvas.DrawCircle(point, NodeRadius, paint);
             }
-            
-            _canvas.DrawCircle(point, NodeRadius, paint);
         }
 
         private void renderFrame()

@@ -29,6 +29,8 @@ namespace evolvecli
         public void Run()
         {
             int highWaterMark = 0;
+
+            LinkedList<double> runningSurvivorRatio = new LinkedList<double>();
             
             for (Simulation.CurrentGeneration = 1;
                 Simulation.CurrentGeneration <= Simulation.Generations;
@@ -72,25 +74,36 @@ namespace evolvecli
                 {
                     highWaterMark = survived;
 
-                    var common = survivors
+                    var groups = survivors
                         .GroupBy(n => n.Fingerprint())
-                        .OrderByDescending(g => g.Count())
-                        .Take(2);
+                        .OrderByDescending(g => g.Count());
 
+                    int diversity = groups.Count();
+                    
                     int rank = 1;
-                    foreach (var c in common)
+                    foreach (var c in groups.Take(2))
                     {
                         Console.WriteLine("-----");
                         Console.WriteLine($"{rank++}: {c.Count()}/{survivors.Count}");
                         Console.WriteLine(c.First().Description());
                     }
 
+                    Console.WriteLine($"Genetic diversity: {diversity}");
                 }
 
                 double survivalRatio = survived / (double) Simulation.TotalNodes;
+
+                runningSurvivorRatio.AddFirst(survivalRatio * 100);
+
+                double running10 = runningSurvivorRatio.Take(10).Average();
+                double running100 = runningSurvivorRatio.Take(100).Average();
+
+                Console.WriteLine($"Running averages (10, 100) {running10}, {running100}");
+                
+                
                 Simulation.WinThresholdExceeded = survivalRatio >= Simulation.SuccessThreshold;
 
-                Console.WriteLine($"{survived} survived ({survivalRatio}%)");
+                Console.WriteLine($"{survived} survived ({survivalRatio * 100}%)");
                 
                 var children = reproduce(survivors);
 

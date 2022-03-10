@@ -10,7 +10,7 @@ namespace evolve
         public InnerNeuron(double initialWeight)
         {
             Id = Guid.NewGuid();
-            _initialWeight = Simulation.ActivationFunction(RNG.Double());
+            _initialWeight = Simulation.ActivationFunction(initialWeight);
             _weight = initialWeight;
         }
 
@@ -24,10 +24,11 @@ namespace evolve
             if (Simulation.WeightToBool(Simulation.MutationChance))
             {
                 var mutateUp = RNG.Bool();
+                var mutateAmount = RNG.Double();
                 
                 _initialWeight = mutateUp
-                    ? RNG.Double() * (1.0 - _initialWeight)
-                    : RNG.Double();
+                    ? mutateAmount * (1.0 - _initialWeight)
+                    : mutateAmount;
             }
         }
 
