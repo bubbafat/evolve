@@ -25,8 +25,8 @@ namespace evolve
             ActionType.MoveEast,
             ActionType.MoveWest,
             ActionType.MoveRandom,
-//            ActionType.MoveToCenterX,
-//            ActionType.MoveToCenterY,
+            ActionType.MoveToCenterX,
+            ActionType.MoveToCenterY,
             ActionType.Bully,  // conditional
             ActionType.Kill,   // conditional
             ActionType.Defend, // conditional
