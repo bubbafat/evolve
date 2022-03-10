@@ -104,7 +104,10 @@ namespace evolvecli
             
             foreach (Node n in _world.Nodes)
             {
-                renderNode(n);
+                if (n != null)
+                {
+                    renderNode(n);
+                }
             }
 
             renderBreedingGround();

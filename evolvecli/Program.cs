@@ -6,7 +6,7 @@ namespace evolvecli
     {
         public static void Main(string[] args)
         {
-            World world = new World(Simulation.BoardDimensions);
+            World world = new World(Simulation.BoardDimensions, Simulation.TotalNodes);
 
             // middle vert
             world.AddWall(Simulation.BoardDimensions / 2 - 1, 10, 3, Simulation.BoardDimensions - 20);

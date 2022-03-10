@@ -39,9 +39,6 @@ namespace evolvecli
                 Console.WriteLine();
                 Console.WriteLine($"Generation {Simulation.CurrentGeneration}");
                 
-                _world.BeginStep();
-
-
                 StepTimer.Start();
                 for (Simulation.CurrentStep = 1;
                     Simulation.CurrentStep < Simulation.StepsPerGeneration;
@@ -68,8 +65,8 @@ namespace evolvecli
                     return;
                 }
 
-                var survivors = _world.Nodes.ToList();
-                int survived = survivors.Count;
+                var survivors = _world.Nodes.Where(n => n != null).ToArray();
+                int survived = survivors.Length;
                 if (highWaterMark < survived || Simulation.RenderFrame)
                 {
                     highWaterMark = survived;
@@ -84,7 +81,7 @@ namespace evolvecli
                     foreach (var c in groups.Take(2))
                     {
                         Console.WriteLine("-----");
-                        Console.WriteLine($"{rank++}: {c.Count()}/{survivors.Count}");
+                        Console.WriteLine($"{rank++}: {c.Count()}/{survivors.Length}");
                         Console.WriteLine(c.First().Description());
                     }
 
@@ -114,7 +111,7 @@ namespace evolvecli
             }
         }
 
-        private IEnumerable<Node> reproduce(List<Node> survivers)
+        private IEnumerable<Node> reproduce(Node[] survivers)
         {
             Node[] output = new Node[Simulation.TotalNodes];
 
@@ -140,10 +137,12 @@ namespace evolvecli
 
         private void Step()
         {
+            _world.BeginStep();
+
             _world.Nodes.AsParallel().ForAll(n => n.Reset());
             _world.Nodes.AsParallel().ForAll(n => n.Evaluate());
             _world.Nodes.AsParallel().ForAll(n => n.Execute());
-            
+
             _world.EndStep();
         }
     }
