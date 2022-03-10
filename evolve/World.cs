@@ -271,12 +271,12 @@ namespace evolve
             return type switch
             {
                 SensorType.TimeSinceLastMove => node.LastMoveStep / (double) Simulation.CurrentStep,
-                SensorType.DistanceFromNorth => 1.0 - node.Y / (double) Dimension,
-                SensorType.DistanceFromSouth => node.Y / (double) Dimension,
-                SensorType.DistanceFromWest => 1.0 - node.X / (double) Dimension,
-                SensorType.DistanceFromEast => node.X / (double) Dimension,
+                SensorType.DistanceFromNorth => node.Y / (double) Dimension,
+                SensorType.DistanceFromSouth => 1.0 - node.Y / (double) Dimension,
+                SensorType.DistanceFromWest => node.X / (double) Dimension,
+                SensorType.DistanceFromEast => 1.0 - node.X / (double) Dimension,
                 SensorType.LocalPopulation => NeighborsSatisfying(node.X, node.Y, (x,y) => OnBoard(x, y) && HasNode(x, y)) / 8.0,
-                SensorType.DistanceFromCenter => DistanceFromCenter(node.X, node.Y),
+                SensorType.DistanceFromCenter => DistanceFromCenter(node.X, node.Y) / (Dimension / 2.0),
                 SensorType.Blocked => NeighborsSatisfying(node.X, node.Y, (x,y) => !AvailableForNode(node.X, node.Y)) / 8.0,
                 _ => throw new NotSupportedException("Invalid SensorType")
             };

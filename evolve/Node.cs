@@ -108,8 +108,8 @@ namespace evolve
             UpdateDesires();
 
             double stayWeight = Simulation.ActivationFunction(Math.Abs(Desire.StayPut));
-            double moveXWeight = Simulation.ActivationFunction(Math.Abs(Desire.MoveY));
-            double moveYWeight = Simulation.ActivationFunction(Math.Abs(Desire.MoveX));
+            double moveYWeight = Simulation.ActivationFunction(Math.Abs(Desire.MoveY));
+            double moveXWeight = Simulation.ActivationFunction(Math.Abs(Desire.MoveX));
 
             // if the desire to stay is stronger than the desire to move check if you stay
             if (stayWeight > moveXWeight && stayWeight > moveYWeight)
@@ -141,13 +141,13 @@ namespace evolve
                 case (true, true):
                     Desire.MoveX += weight;
                     break;
-                case (true, false):
+                case (true, false): 
                     Desire.MoveX -= weight;
                     break;
-                case (false, true):
+                case (false, true): 
                     Desire.MoveY += weight;
                     break;
-                case (false, false):
+                case (false, false): 
                     Desire.MoveY -= weight;
                     break;
             }
@@ -155,7 +155,6 @@ namespace evolve
 
         private void MoveToCenter(bool centerX, bool centerY, double weight)
         {
-
             if (centerX)
             {
                 bool westOfCenter = X < World.Dimension / 2;

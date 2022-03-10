@@ -25,11 +25,11 @@ namespace evolve
             ActionType.MoveEast,
             ActionType.MoveWest,
             ActionType.MoveRandom,
-            ActionType.MoveToCenterX,
-            ActionType.MoveToCenterY,
-            ActionType.Bully,
-            ActionType.Kill,
-            ActionType.Defend,
+//            ActionType.MoveToCenterX,
+//            ActionType.MoveToCenterY,
+            ActionType.Bully,  // conditional
+            ActionType.Kill,   // conditional
+            ActionType.Defend, // conditional
         };
 
         static NetworkBuilder()
@@ -58,6 +58,11 @@ namespace evolve
 
         private InnerNeuron RandomInner()
         {
+            if (Simulation.InnerNeurons < 1)
+            {
+                throw new NotSupportedException("Attempted to create inner neurons but none are allowed");
+            }
+            
             int innerIndex = RNG.Int() % Simulation.InnerNeurons;
             if (!_inners.TryGetValue(innerIndex, out InnerNeuron neuron))
             {
@@ -71,7 +76,7 @@ namespace evolve
         private IActivatable RandomSource()
         {
             bool createSensor = RNG.Bool();
-            if (createSensor)
+            if (createSensor || Simulation.InnerNeurons < 1)
             {
                 var type = SensorTypes.Random();
                 return CachedSensor(type);
@@ -83,7 +88,7 @@ namespace evolve
         private ISink RandomSink()
         {
             bool createAction = RNG.Bool();
-            if (createAction)
+            if (createAction || Simulation.InnerNeurons < 1)
             {
                 var type = ActionTypes.Random();
                 return CachedAction(type);
