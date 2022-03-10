@@ -9,8 +9,8 @@ namespace evolve
         public const int StepsPerGeneration = FPS * 10;
         public const double SuccessThreshold = 0.98;
         public const int BoardDimensions = 128;
-        public const int GenesPerGenome = 16;
-        public const int InnerNeurons = 5;
+        public const int GenesPerGenome = 2;
+        public const int InnerNeurons = 1;
         public const double MutationChance = 2.0 / TotalNodes / GenesPerGenome;
         public const bool AllowKillers = false;
         public const bool AllowDefense = false;
@@ -43,8 +43,8 @@ namespace evolve
 
         public static bool InBreedingGrounds(int x, int y)
         {
-            // left side
-            // return x < 15;
+            // right side
+            return x > BoardDimensions - 15;
             
             // left side but not the corners
             // return x < 15 && y > 15 && y < BoardDimensions - 15;

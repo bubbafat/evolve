@@ -74,7 +74,7 @@ namespace evolve
 
         private bool AvailableForNode(int x, int y)
         {
-            return OnBoard(x, y) && !IsWall(x, y) && !HasNode(x, y);
+            return !IsWall(x, y) && !HasNode(x, y);
         }
         
         public void Clear()
@@ -235,27 +235,43 @@ namespace evolve
             _nodes.RemoveAll(n => n.Id == node.Id);
         }
 
-        IEnumerable<(int, int)> neighbors(int x, int y)
+        private ConcurrentDictionary<(int, int), (int, int)[]> neighborCache = new ConcurrentDictionary<(int,int), (int,int)[]>();
+        (int, int)[] neighborsGenerator(int x, int y)
         {
-            yield return (x - 1, y + 1);
-            yield return (x, y + 1);
-            yield return (x + 1, y + 1);
-            
-            yield return (x - 1, y);
-            yield return (x + 1, y);
+            return new []
+            {
+                (x - 1, y + 1),
+                (x, y + 1),
+                (x + 1, y + 1),
 
-            yield return (x - 1, y - 1);
-            yield return (x, y - 1);
-            yield return (x + 1, y - 1);
+                (x - 1, y),
+                (x + 1, y),
+
+                (x - 1, y - 1),
+                (x, y - 1),
+                (x + 1, y - 1)
+            };
         }
-        private int NeighborsSatisfying(int x, int y, Func<int,int,bool> test)
+
+        (int, int)[] validNeighbors(int x, int y)
         {
-            return neighbors(x, y).Count(c => test(c.Item1, c.Item2));
+            if (!neighborCache.ContainsKey((x, y)))
+            {
+                neighborCache.TryAdd((x, y), neighborsGenerator(x, y).Where(n => OnBoard(n.Item1, n.Item2) && !IsWall(n.Item1, n.Item2)).ToArray());
+            }
+
+            neighborCache.TryGetValue((x, y), out var result);
+            return result;
+        }
+
+        private int ValidNeighborsSatisfying(int x, int y, Func<int,int,bool> test)
+        {
+            return validNeighbors(x, y).Count(c => test(c.Item1, c.Item2));
         }
 
         private IEnumerable<(int, int)> emptyNeighbors(int x, int y)
         {
-            return neighbors(x, y).Where((coord) => AvailableForNode(coord.Item1, coord.Item2));
+            return validNeighbors(x, y).Where((coord) => AvailableForNode(coord.Item1, coord.Item2));
         }
 
         private double DistanceFromCenter(int x, int y)
@@ -275,9 +291,9 @@ namespace evolve
                 SensorType.DistanceFromSouth => 1.0 - node.Y / (double) Dimension,
                 SensorType.DistanceFromWest => node.X / (double) Dimension,
                 SensorType.DistanceFromEast => 1.0 - node.X / (double) Dimension,
-                SensorType.LocalPopulation => NeighborsSatisfying(node.X, node.Y, (x,y) => OnBoard(x, y) && HasNode(x, y)) / 8.0,
+                SensorType.LocalPopulation => ValidNeighborsSatisfying(node.X, node.Y, (x,y) => HasNode(x, y)) / 8.0,
                 SensorType.DistanceFromCenter => DistanceFromCenter(node.X, node.Y) / (Dimension / 2.0),
-                SensorType.Blocked => NeighborsSatisfying(node.X, node.Y, (x,y) => !AvailableForNode(node.X, node.Y)) / 8.0,
+                SensorType.Blocked => ValidNeighborsSatisfying(node.X, node.Y, (x,y) => !HasNode(node.X, node.Y)) / 8.0,
                 _ => throw new NotSupportedException("Invalid SensorType")
             };
         }

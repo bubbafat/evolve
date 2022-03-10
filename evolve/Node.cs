@@ -71,7 +71,7 @@ namespace evolve
                         Desire.MoveY -= weight;
                         break;
                     case ActionType.MoveEast:
-                        Desire.MoveY += weight;
+                        Desire.MoveX += weight;
                         break;
                     case ActionType.MoveWest:
                         Desire.MoveX -= weight;
