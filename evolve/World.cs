@@ -167,40 +167,53 @@ namespace evolve
             if (!OnBoard(x, y) || IsWall(x, y))
                 return;
 
-            Coords loc = new Coords(x, y);
+            Coords destination = new Coords(x, y);
 
-            if (!HasNode(loc.X, loc.Y))
+            if (!HasNode(destination.X, destination.Y))
             {
                 _grid[node.Location.X, node.Location.Y] = null;
-                _grid[loc.X, loc.Y] = node;
-                node.Location = new Coords(loc.X, loc.Y);
+                _grid[destination.X, destination.Y] = node;
+                node.Location = new Coords(destination.X, destination.Y);
             }
 
             // a bully will make the other node swap locations with them
-            if (HasNode(loc.X, loc.Y) && Do(node.Desire.Bully) && !Do(_grid[loc.X, loc.Y]!.Desire.Defend))
+            if (HasNode(destination.X, destination.Y) && Do(node.Desire.Bully) && !Do(_grid[destination.X, destination.Y]!.Desire.Defend))
             {
-                if (emptyNeighbors(loc).ToList().TryGetRandom(out Coords location))
+                if (emptyNeighbors(destination).ToList().TryGetRandom(out Coords emptyLocation))
                 {
                     // push the blocking node to one of it's empty neighbors
                     // freeing the slot needed for the node to move to
-                    var n = _grid[loc.X, loc.Y];
-                    _grid[location.X, location.Y] = _grid[loc.X, loc.Y];
-                    _grid[loc.X, loc.Y] = null;
-                    n!.Location = new Coords(location.X, location.Y);
+
+                    // move the victim (the current node will end up here)
+                    _grid[emptyLocation.X, emptyLocation.Y] = _grid[destination.X, destination.Y];
+
+                    // set the victim's location
+                    _grid[emptyLocation.X, emptyLocation.Y]!.Location = new Coords(emptyLocation.X, emptyLocation.Y);
+
+                    // remove the current node from it's current slot
+                    _grid[node.Location.X, node.Location.Y] = null;
+
+                    // put the current node in the empty slot
+                    _grid[destination.X, destination.Y] = node;
+
+                    // set the current node's location
+                    _grid[destination.X, destination.Y]!.Location = new Coords(destination.X, destination.Y);
+
+                    return;
                 }
                 else
                 {
                     // we can't push so do a swap - no subsequent move is needed
-                    SwapNodes(loc.X, loc.Y, node.Location.X, node.Location.Y);
+                    SwapNodes(destination.X, destination.Y, node.Location.X, node.Location.Y);
                     return;
                 }
             }
 
             // a killer will kill the other node (and a killer bully will bully first)
             // unless the node is defensive
-            if (HasNode(loc.X, loc.Y) && Do(node.Desire.Kill))
+            if (HasNode(destination.X, destination.Y) && Do(node.Desire.Kill))
             {
-                if (Do(_grid[loc.X, loc.Y]!.Desire.Defend))
+                if (Do(_grid[destination.X, destination.Y]!.Desire.Defend))
                 {
                     // the killer picked the wrong victim
                     KillAt(node.Location.X, node.Location.Y);
@@ -208,7 +221,7 @@ namespace evolve
                 }
 
                 // kills and frees up the spot for the subsequent move
-                KillAt(loc.X, loc.Y);
+                KillAt(destination.X, destination.Y);
             }
         }
 
