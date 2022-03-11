@@ -41,7 +41,7 @@ namespace evolve
             Id = Guid.NewGuid();
             LastMoveStep = 0;
             Desire = new Desires();
-            Location = new Coords(-1, -1);
+            Location = Coords.Unknown;
             Alive = true;
         }
 
@@ -78,13 +78,13 @@ namespace evolve
                             Desire.StayPut += weight;
                             break;
                         case ActionType.MoveRandom:
-                            MoveRandom(weight);
+                            UpdateRandomDesire(weight);
                             break;
                         case ActionType.MoveToCenterX:
-                            MoveToCenter(true, false, weight);
+                            UpdateMoveToCenterDesire(true, false, weight);
                             break;
                         case ActionType.MoveToCenterY:
-                            MoveToCenter(false, true, weight);
+                            UpdateMoveToCenterDesire(false, true, weight);
                             break;
                         case ActionType.Bully:
                             Desire.Bully += weight;
@@ -130,7 +130,7 @@ namespace evolve
             }
         }
 
-        private void MoveRandom(double weight)
+        private void UpdateRandomDesire(double weight)
         {
             bool x = RNG.Bool();
             bool pos = RNG.Bool();
@@ -148,13 +148,13 @@ namespace evolve
             }
         }
 
-        private void MoveToCenter(bool centerX, bool centerY, double weight)
+        private void UpdateMoveToCenterDesire(bool centerX, bool centerY, double weight)
         {
 
             if (centerX)
             {
-                bool westOfCenter = Location.X < World.Dimension / 2;
-                bool eastOfCenter = Location.X > World.Dimension / 2;
+                bool westOfCenter = Location.X < Simulation.BoardDimensions / 2;
+                bool eastOfCenter = Location.X > Simulation.BoardDimensions / 2;
 
                 if (westOfCenter)
                 {
@@ -168,9 +168,8 @@ namespace evolve
 
             if (centerY)
             {
-                bool southOfCenter = Location.Y < World.Dimension / 2;
-                bool northOfCenter = Location.Y > World.Dimension / 2;
-
+                bool southOfCenter = Location.Y < Simulation.BoardDimensions / 2;
+                bool northOfCenter = Location.Y > Simulation.BoardDimensions / 2;
 
                 if (southOfCenter)
                 {

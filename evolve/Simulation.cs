@@ -11,13 +11,15 @@ namespace evolve
         public static int BoardDimensions = 128;
         public static int GenesPerGenome = 6;
         public static int InnerNeurons = 3;
-        public static readonly double MutationChance = 1d / TotalNodes; 
+        public static double MutationChance => 1d / TotalNodes;
+
         public static bool AllowKillers = false;
         public static bool AllowBullies = true;
         public static bool AllowDefense = false;
         public static int BreedingGroundId = 1;
 
-        public static int RenderOnMultiple = Generations / 10;
+        public static int RenderOnMultiple => Generations / 5;
+
         private const int FPS = 30;
 
         public static bool WinThresholdExceeded = false;

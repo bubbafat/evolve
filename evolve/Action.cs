@@ -58,7 +58,7 @@ namespace evolve
         {
             if (Simulation.WeightToBool(Simulation.MutationChance))
             {
-                Type = NetworkBuilder.ActionTypes.Random();
+                Type = NetworkBuilder.ActionTypes.Random();                
             }
         }
 

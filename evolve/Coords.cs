@@ -18,6 +18,8 @@ namespace evolve
         public readonly int Y;
         private readonly int _hashCode;
 
+        internal readonly static Coords Unknown = new Coords(-1, -1);
+
         public override int GetHashCode()
         {
             return _hashCode;
