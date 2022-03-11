@@ -131,8 +131,8 @@ namespace evolve
         private void SwapNodes(int x1, int y1, int x2, int y2)
         {
             (_grid[x1, y1], _grid[x2, y2]) = (_grid[x2, y2], _grid[x1, y1]);
-            (_grid[x1, y1]!.X, _grid[x1, y1]!.Y) = (x1, y1);
-            (_grid[x2, y2]!.X, _grid[x2, y2]!.Y) = (x2, y2);
+            (_grid[x1, y1]!.Location.X, _grid[x1, y1]!.Location.Y) = (x1, y1);
+            (_grid[x2, y2]!.Location.X, _grid[x2, y2]!.Location.Y) = (x2, y2);
         }
 
         private void KillAt(int x, int y)
@@ -159,8 +159,8 @@ namespace evolve
                 _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, null)
             };
 
-            int x = node.X + dirX;
-            int y = node.Y + dirY;
+            int x = node.Location.X + dirX;
+            int y = node.Location.Y + dirY;
             
             if (OnBoard(x, y) && !IsWall(x, y))
             {
@@ -174,12 +174,12 @@ namespace evolve
                         var n = _grid[x, y];
                         _grid[location.Item1, location.Item2] = _grid[x, y];
                         _grid[x, y] = null;
-                        (n!.X, n!.Y) = (location.Item1, location.Item2);
+                        (n!.Location.X, n!.Location.Y) = (location.Item1, location.Item2);
                     }
                     else
                     {
                         // we can't push so do a swap - no subsequent move is needed
-                        SwapNodes(x, y, node.X, node.Y);
+                        SwapNodes(x, y, node.Location.X, node.Location.Y);
                         return;
                     }
                 }
@@ -191,7 +191,7 @@ namespace evolve
                     if (Do(_grid[x, y]!.Desire.Defend))
                     {
                         // the killer picked the wrong victim
-                        KillAt(node.X, node.Y);
+                        KillAt(node.Location.X, node.Location.Y);
                         return;
                     }
 
@@ -201,10 +201,10 @@ namespace evolve
 
                 if (!HasNode(x, y))
                 {
-                    _grid[node.X, node.Y] = null;
+                    _grid[node.Location.X, node.Location.Y] = null;
                     _grid[x, y] = node;
-                    node.X = x;
-                    node.Y = y;
+                    node.Location.X = x;
+                    node.Location.Y = y;
                 }
             }
         }
@@ -216,8 +216,8 @@ namespace evolve
 
         public void AddAtRandom(Node node)
         {
-            (node.X, node.Y) = RandomEmptyLocation();
-            _grid[node.X, node.Y] = node;
+            (node.Location.X, node.Location.Y) = RandomEmptyLocation();
+            _grid[node.Location.X, node.Location.Y] = node;
             _nodes.Add(node);
         }
 
@@ -231,7 +231,7 @@ namespace evolve
 
         private void RemoveNode(Node node)
         {
-            _grid[node.X, node.Y] = null;
+            _grid[node.Location.X, node.Location.Y] = null;
             _nodes.RemoveAll(n => n.Id == node.Id);
         }
 
@@ -271,13 +271,13 @@ namespace evolve
             return type switch
             {
                 SensorType.TimeSinceLastMove => node.LastMoveStep / (double) Simulation.CurrentStep,
-                SensorType.DistanceFromNorth => 1.0 - node.Y / (double) Dimension,
-                SensorType.DistanceFromSouth => node.Y / (double) Dimension,
-                SensorType.DistanceFromWest => 1.0 - node.X / (double) Dimension,
-                SensorType.DistanceFromEast => node.X / (double) Dimension,
-                SensorType.LocalPopulation => NeighborsSatisfying(node.X, node.Y, (x,y) => OnBoard(x, y) && HasNode(x, y)) / 8.0,
-                SensorType.DistanceFromCenter => DistanceFromCenter(node.X, node.Y),
-                SensorType.Blocked => NeighborsSatisfying(node.X, node.Y, (x,y) => !AvailableForNode(x, y)) / 8.0,
+                SensorType.DistanceFromNorth => 1.0 - node.Location.Y / (double) Dimension,
+                SensorType.DistanceFromSouth => node.Location.Y / (double) Dimension,
+                SensorType.DistanceFromWest => 1.0 - node.Location.X / (double) Dimension,
+                SensorType.DistanceFromEast => node.Location.X / (double) Dimension,
+                SensorType.LocalPopulation => NeighborsSatisfying(node.Location.X, node.Location.Y, (x,y) => OnBoard(x, y) && HasNode(x, y)) / 8.0,
+                SensorType.DistanceFromCenter => DistanceFromCenter(node.Location.X, node.Location.Y),
+                SensorType.Blocked => NeighborsSatisfying(node.Location.X, node.Location.Y, (x,y) => !AvailableForNode(x, y)) / 8.0,
                 _ => throw new NotSupportedException("Invalid SensorType")
             };
         }

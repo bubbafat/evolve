@@ -69,8 +69,8 @@ namespace evolvecli
         private void renderNode(Node n)
         {
             SKPoint point = new SKPoint(
-                n.X * CellMultiple + NodeRadius,
-                n.Y * CellMultiple + NodeRadius);
+                n.Location.X * CellMultiple + NodeRadius,
+                n.Location.Y * CellMultiple + NodeRadius);
 
             int paintKey = n.Fingerprint();
             if (!_paintCache.TryGetValue(paintKey, out SKPaint paint))

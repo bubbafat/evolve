@@ -61,7 +61,7 @@ namespace evolvecli
                     Console.WriteLine($"Total Kills: {kills}");
                 }
 
-                _world.RemoveIf(n => !Simulation.InBreedingGrounds(n.X, n.Y));
+                _world.RemoveIf(n => !Simulation.InBreedingGrounds(n.Location.X, n.Location.Y));
                 
                 if (Simulation.WinThresholdExceeded)
                 {

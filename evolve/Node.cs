@@ -41,14 +41,16 @@ namespace evolve
             Id = Guid.NewGuid();
             LastMoveStep = 0;
             Desire = new Desires();
-            X = -1;
-            Y = -1;
+            Location = new Coords
+            {
+                X = -1,
+                Y = -1
+            };
             Alive = true;
         }
-        
-        public int X { get; set; }
-        public int Y { get; set; }
-        
+
+        public Coords Location { get; set; }
+                
         public void Evaluate()
         {
             _genome.Evaluate(this);
@@ -154,8 +156,8 @@ namespace evolve
 
             if (centerX)
             {
-                bool westOfCenter = X < World.Dimension / 2;
-                bool eastOfCenter = X > World.Dimension / 2;
+                bool westOfCenter = Location.X < World.Dimension / 2;
+                bool eastOfCenter = Location.X > World.Dimension / 2;
 
                 if (westOfCenter)
                 {
@@ -169,8 +171,8 @@ namespace evolve
 
             if (centerY)
             {
-                bool southOfCenter = Y < World.Dimension / 2;
-                bool northOfCenter = Y > World.Dimension / 2;
+                bool southOfCenter = Location.Y < World.Dimension / 2;
+                bool northOfCenter = Location.Y > World.Dimension / 2;
 
 
                 if (southOfCenter)
