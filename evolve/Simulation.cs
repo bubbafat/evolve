@@ -7,7 +7,7 @@ namespace evolve
         public const int TotalNodes = 1000;
         public const int Generations = 1000;
         public const int StepsPerGeneration = FPS * 10;
-        public const double SuccessThreshold = 0.98;
+        public const double SuccessThreshold = 0.95;
         public const int BoardDimensions = 128;
         public const int GenesPerGenome = 2;
         public const int InnerNeurons = 1;
@@ -22,7 +22,7 @@ namespace evolve
         public static bool WinThresholdExceeded = false;
 
         public static bool RenderFrame =>
-            true
+            false
                 &&  (CurrentGeneration == 1
                     || WinThresholdExceeded
                     || CurrentGeneration == Generations
