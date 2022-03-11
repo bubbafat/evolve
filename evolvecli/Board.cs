@@ -21,7 +21,7 @@ namespace evolvecli
         {
             _world = world;
 
-            var info = new SKImageInfo(_world.Dimension * CellMultiple, _world.Dimension * CellMultiple);
+            var info = new SKImageInfo(World.Dimension * CellMultiple, World.Dimension * CellMultiple);
             _surface = SKSurface.Create(info);
             _canvas = _surface.Canvas;
             _paintCache = new Dictionary<int, SKPaint>();

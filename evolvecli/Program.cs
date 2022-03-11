@@ -60,7 +60,7 @@ namespace evolvecli
             Simulation.BreedingGroundId = arg(args, "grounds", Simulation.BreedingGroundId);
             var walls = arg(args, "walls", string.Empty);
 
-            World world = new World(Simulation.BoardDimensions);
+            World world = new World();
 
             switch(walls)
             {

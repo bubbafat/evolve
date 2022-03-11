@@ -13,10 +13,10 @@ namespace evolve
         private readonly List<Node> _nodes = new List<Node>();
 
         private readonly ThreadLocal<Queue<Move>> _moveQueue = new ThreadLocal<Queue<Move>>(() => new Queue<Move>(), true);
+        public readonly static int Dimension = Simulation.BoardDimensions;
 
-        public World(int dimensions)
+        public World()
         {
-            Dimension = dimensions;
             _grid = new Node[Dimension, Dimension];
             _blocks = new bool[Dimension, Dimension];
             primeNeighborCache();
@@ -59,8 +59,6 @@ namespace evolve
         
         public IEnumerable<Node> Nodes => _nodes;
 
-        public int Dimension { get; }
-
         private bool HasNode(int x, int y)
         {
             return _grid[x, y] != null;
@@ -71,7 +69,7 @@ namespace evolve
             return _blocks[x, y];
         }
         
-        private bool OnBoard(int x, int y)
+        private static bool OnBoard(int x, int y)
         {
             bool offBoard = x < 0 || x > Dimension-1 || y < 0 || y > Dimension-1;
             return !offBoard;
@@ -136,8 +134,7 @@ namespace evolve
         private void SwapNodes(int x1, int y1, int x2, int y2)
         {
             (_grid[x1, y1], _grid[x2, y2]) = (_grid[x2, y2], _grid[x1, y1]);
-            _grid[x1, y1]!.Location = new Coords(x1, y1);
-            _grid[x2, y2]!.Location = new Coords(x2, y2);
+            (_grid[x1, y1]!.Location, _grid[x2, y2]!.Location) = (_grid[x2, y2]!.Location, _grid[x1, y1]!.Location);
         }
 
         private void KillAt(int x, int y)
@@ -154,7 +151,7 @@ namespace evolve
             {
                 return;
             }
-            
+
             var (dirX, dirY) = direction switch
             {
                 Direction.North => (0, 1),
@@ -164,51 +161,54 @@ namespace evolve
                 _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, null)
             };
 
-            Coords loc = new Coords(node.Location.X + dirX, node.Location.Y + dirY);
-            
-            if (OnBoard(loc.X, loc.Y) && !IsWall(loc.X, loc.Y))
+            int x = node.Location.X + dirX;
+            int y = node.Location.Y + dirY;
+
+            if (!OnBoard(x, y) || IsWall(x, y))
+                return;
+
+            Coords loc = new Coords(x, y);
+
+            if (!HasNode(loc.X, loc.Y))
             {
-                if (!HasNode(loc.X, loc.Y))
+                _grid[node.Location.X, node.Location.Y] = null;
+                _grid[loc.X, loc.Y] = node;
+                node.Location = new Coords(loc.X, loc.Y);
+            }
+
+            // a bully will make the other node swap locations with them
+            if (HasNode(loc.X, loc.Y) && Do(node.Desire.Bully) && !Do(_grid[loc.X, loc.Y]!.Desire.Defend))
+            {
+                if (emptyNeighbors(loc).ToList().TryGetRandom(out Coords location))
                 {
-                    _grid[node.Location.X, node.Location.Y] = null;
-                    _grid[loc.X, loc.Y] = node;
-                    node.Location = new Coords(loc.X, loc.Y);
+                    // push the blocking node to one of it's empty neighbors
+                    // freeing the slot needed for the node to move to
+                    var n = _grid[loc.X, loc.Y];
+                    _grid[location.X, location.Y] = _grid[loc.X, loc.Y];
+                    _grid[loc.X, loc.Y] = null;
+                    n!.Location = new Coords(location.X, location.Y);
+                }
+                else
+                {
+                    // we can't push so do a swap - no subsequent move is needed
+                    SwapNodes(loc.X, loc.Y, node.Location.X, node.Location.Y);
+                    return;
+                }
+            }
+
+            // a killer will kill the other node (and a killer bully will bully first)
+            // unless the node is defensive
+            if (HasNode(loc.X, loc.Y) && Do(node.Desire.Kill))
+            {
+                if (Do(_grid[loc.X, loc.Y]!.Desire.Defend))
+                {
+                    // the killer picked the wrong victim
+                    KillAt(node.Location.X, node.Location.Y);
+                    return;
                 }
 
-                // a bully will make the other node swap locations with them
-                if (HasNode(loc.X, loc.Y) && Do(node.Desire.Bully) && !Do(_grid[loc.X, loc.Y]!.Desire.Defend))
-                {
-                    if (emptyNeighbors(loc).ToList().TryGetRandom(out Coords location))
-                    {
-                        // push the blocking node to one of it's empty neighbors
-                        // freeing the slot needed for the node to move to
-                        var n = _grid[loc.X, loc.Y];
-                        _grid[location.X, location.Y] = _grid[loc.X, loc.Y];
-                        _grid[loc.X, loc.Y] = null;
-                        n!.Location = new Coords(location.X, location.Y);
-                    }
-                    else
-                    {
-                        // we can't push so do a swap - no subsequent move is needed
-                        SwapNodes(loc.X, loc.Y, node.Location.X, node.Location.Y);
-                        return;
-                    }
-                }
-                
-                // a killer will kill the other node (and a killer bully will bully first)
-                // unless the node is defensive
-                if (HasNode(loc.X, loc.Y) && Do(node.Desire.Kill))
-                {
-                    if (Do(_grid[loc.X, loc.Y]!.Desire.Defend))
-                    {
-                        // the killer picked the wrong victim
-                        KillAt(node.Location.X, node.Location.Y);
-                        return;
-                    }
-
-                    // kills and frees up the spot for the subsequent move
-                    KillAt(loc.X, loc.Y);
-                }
+                // kills and frees up the spot for the subsequent move
+                KillAt(loc.X, loc.Y);
             }
         }
 
@@ -262,7 +262,7 @@ namespace evolve
                 new Coords(x - 1, y - 1),
                 new Coords(x, y - 1),
                 new Coords(x + 1, y - 1)
-            };
+            }.Where(x => OnBoard(x.X, x.Y)).ToArray();
         }
 
         public Coords[] neighbors(Coords coord)
