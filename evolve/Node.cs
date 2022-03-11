@@ -41,11 +41,7 @@ namespace evolve
             Id = Guid.NewGuid();
             LastMoveStep = 0;
             Desire = new Desires();
-            Location = new Coords
-            {
-                X = -1,
-                Y = -1
-            };
+            Location = new Coords(-1, -1);
             Alive = true;
         }
 
