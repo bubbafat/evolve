@@ -2,7 +2,7 @@
 
 namespace evolve
 {
-    public struct Coords : IComparable<Coords>
+    public record Coords : IComparable<Coords>
     {
         public Coords(int x, int y)
         {
@@ -26,16 +26,6 @@ namespace evolve
         public override string ToString()
         {
             return $"Coord({X},{Y})";
-        }
-
-        public override bool Equals(object obj)
-        {
-            if(obj is Coords coord)
-            {
-                return CompareTo(coord) == 0;
-            }
-
-            return false;
         }
 
         public int CompareTo(Coords other)

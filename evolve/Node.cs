@@ -107,8 +107,8 @@ namespace evolve
             UpdateDesires();
 
             double stayWeight = Simulation.ActivationFunction(Math.Abs(Desire.StayPut));
-            double moveXWeight = Simulation.ActivationFunction(Math.Abs(Desire.MoveY));
-            double moveYWeight = Simulation.ActivationFunction(Math.Abs(Desire.MoveX));
+            double moveXWeight = Simulation.ActivationFunction(Math.Abs(Desire.MoveX));
+            double moveYWeight = Simulation.ActivationFunction(Math.Abs(Desire.MoveY));
 
             // if the desire to stay is stronger than the desire to move check if you stay
             if (stayWeight > moveXWeight && stayWeight > moveYWeight)
