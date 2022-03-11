@@ -6,7 +6,7 @@ namespace evolve
 {
     public class Genome
     {
-        private readonly List<Gene> _genes;
+        public readonly Gene[] Genes;
 
         private Genome(int genes)
             : this(NetworkBuilder.CreateRandom(genes))
@@ -15,7 +15,7 @@ namespace evolve
 
         private Genome(IEnumerable<Gene> genes)
         {
-            _genes = genes.ToList();
+            Genes = genes.ToArray();
         }
 
         public static Genome CreateRandom(int genes)
@@ -27,7 +27,7 @@ namespace evolve
         {
             // this works because the genes are sorted such that sensors evaluate first
             // then inner->inner and then sensor->action and inner->action
-            foreach (var gene in _genes)
+            foreach (var gene in Genes)
             {
                 gene.Evaluate(node);
             }
@@ -36,7 +36,7 @@ namespace evolve
         public Genome Reproduce(Genome other)
         {
             var genes = NetworkBuilder.CreateFromExisting(
-                _genes.Concat(other._genes).ToList());
+                Genes.Concat(other.Genes).ToList());
                 
             var mutated = genes.Select(g => g.Mutate());
             
@@ -45,13 +45,14 @@ namespace evolve
 
         public void Reset()
         {
-            _genes.ForEach(g => g.Reset());
+            foreach (var g in Genes)
+                g.Reset();
         }
 
         public string Description()
         {
             StringBuilder sb = new StringBuilder();
-            foreach (Gene g in _genes)
+            foreach (Gene g in Genes)
             {
                 sb.AppendLine(g.Description());
             }
@@ -62,19 +63,12 @@ namespace evolve
         public int Fingerprint()
         {
             int fingerPrint = 0;
-            foreach (var g in _genes)
+            foreach (var g in Genes)
             {
                 fingerPrint |= g.Fingerprint();
             }
 
             return fingerPrint;
-        }
-
-        public IEnumerable<Action> GetActions()
-        {
-            return _genes
-                .Select(g => g.Sink)
-                .OfType<Action>();
         }
     }
 }

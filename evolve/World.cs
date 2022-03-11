@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace evolve
 {
@@ -11,14 +12,14 @@ namespace evolve
         private readonly bool[,] _blocks;
         private readonly List<Node> _nodes = new List<Node>();
 
-        private readonly ConcurrentQueue<Move> _moveQueue;
+        private readonly ThreadLocal<Queue<Move>> _moveQueue = new ThreadLocal<Queue<Move>>(() => new Queue<Move>(), true);
 
         public World(int dimensions)
         {
             Dimension = dimensions;
             _grid = new Node[Dimension, Dimension];
             _blocks = new bool[Dimension, Dimension];
-            _moveQueue = new ConcurrentQueue<Move>();
+            primeNeighborCache();
         }
 
         private class Move
@@ -35,18 +36,22 @@ namespace evolve
 
         public void BeginStep()
         {
-            if (_moveQueue.Count > 0)
+            foreach(var queue in _moveQueue.Values)
             {
-                throw new NotSupportedException();
+                if (queue.Count > 0)
+                {
+                    throw new NotSupportedException();
+                }
             }
         }
 
         public void EndStep()
         {
-            while(!_moveQueue.IsEmpty)
+            foreach (var queue in _moveQueue.Values)
             {
-                if(_moveQueue.TryDequeue(out Move action))
+                while (queue.Count > 0)
                 {
+                    var action = queue.Dequeue();
                     PerformNodeMove(action.Node, action.Direction);
                 }
             }
@@ -82,7 +87,7 @@ namespace evolve
             RemoveIf(n => true);
         }
         
-        private (int,int) RandomEmptyLocation()
+        private Coords RandomEmptyLocation()
         {
             while (true)
             {
@@ -91,7 +96,7 @@ namespace evolve
 
                 if (AvailableForNode(x, y))
                 {
-                    return (x, y);
+                    return new Coords(x, y);
                 }
             }
         }
@@ -131,8 +136,8 @@ namespace evolve
         private void SwapNodes(int x1, int y1, int x2, int y2)
         {
             (_grid[x1, y1], _grid[x2, y2]) = (_grid[x2, y2], _grid[x1, y1]);
-            (_grid[x1, y1]!.Location.X, _grid[x1, y1]!.Location.Y) = (x1, y1);
-            (_grid[x2, y2]!.Location.X, _grid[x2, y2]!.Location.Y) = (x2, y2);
+            _grid[x1, y1]!.Location = new Coords(x1, y1);
+            _grid[x2, y2]!.Location = new Coords(x2, y2);
         }
 
         private void KillAt(int x, int y)
@@ -159,36 +164,42 @@ namespace evolve
                 _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, null)
             };
 
-            int x = node.Location.X + dirX;
-            int y = node.Location.Y + dirY;
+            Coords loc = new Coords(node.Location.X + dirX, node.Location.Y + dirY);
             
-            if (OnBoard(x, y) && !IsWall(x, y))
+            if (OnBoard(loc.X, loc.Y) && !IsWall(loc.X, loc.Y))
             {
-                // a bully will make the other node swap locations with them
-                if (HasNode(x, y) && Do(node.Desire.Bully) && !Do(_grid[x,y]!.Desire.Defend))
+                if (!HasNode(loc.X, loc.Y))
                 {
-                    if (emptyNeighbors(x, y).ToList().TryGetRandom(out (int, int) location))
+                    _grid[node.Location.X, node.Location.Y] = null;
+                    _grid[loc.X, loc.Y] = node;
+                    node.Location = new Coords(loc.X, loc.Y);
+                }
+
+                // a bully will make the other node swap locations with them
+                if (HasNode(loc.X, loc.Y) && Do(node.Desire.Bully) && !Do(_grid[loc.X, loc.Y]!.Desire.Defend))
+                {
+                    if (emptyNeighbors(loc).ToList().TryGetRandom(out Coords location))
                     {
                         // push the blocking node to one of it's empty neighbors
                         // freeing the slot needed for the node to move to
-                        var n = _grid[x, y];
-                        _grid[location.Item1, location.Item2] = _grid[x, y];
-                        _grid[x, y] = null;
-                        (n!.Location.X, n!.Location.Y) = (location.Item1, location.Item2);
+                        var n = _grid[loc.X, loc.Y];
+                        _grid[location.X, location.Y] = _grid[loc.X, loc.Y];
+                        _grid[loc.X, loc.Y] = null;
+                        n!.Location = new Coords(location.X, location.Y);
                     }
                     else
                     {
                         // we can't push so do a swap - no subsequent move is needed
-                        SwapNodes(x, y, node.Location.X, node.Location.Y);
+                        SwapNodes(loc.X, loc.Y, node.Location.X, node.Location.Y);
                         return;
                     }
                 }
                 
                 // a killer will kill the other node (and a killer bully will bully first)
                 // unless the node is defensive
-                if (HasNode(x, y) && Do(node.Desire.Kill))
+                if (HasNode(loc.X, loc.Y) && Do(node.Desire.Kill))
                 {
-                    if (Do(_grid[x, y]!.Desire.Defend))
+                    if (Do(_grid[loc.X, loc.Y]!.Desire.Defend))
                     {
                         // the killer picked the wrong victim
                         KillAt(node.Location.X, node.Location.Y);
@@ -196,27 +207,19 @@ namespace evolve
                     }
 
                     // kills and frees up the spot for the subsequent move
-                    KillAt(x, y);
-                }
-
-                if (!HasNode(x, y))
-                {
-                    _grid[node.Location.X, node.Location.Y] = null;
-                    _grid[x, y] = node;
-                    node.Location.X = x;
-                    node.Location.Y = y;
+                    KillAt(loc.X, loc.Y);
                 }
             }
         }
 
         public void MoveNodeTo(Node node, Direction direction)
         {
-            _moveQueue.Enqueue(new Move(node, direction));
+            _moveQueue.Value.Enqueue(new Move(node, direction));
         }
 
         public void AddAtRandom(Node node)
         {
-            (node.Location.X, node.Location.Y) = RandomEmptyLocation();
+            node.Location = RandomEmptyLocation();
             _grid[node.Location.X, node.Location.Y] = node;
             _nodes.Add(node);
         }
@@ -235,27 +238,55 @@ namespace evolve
             _nodes.RemoveAll(n => n.Id == node.Id);
         }
 
-        IEnumerable<(int, int)> neighbors(int x, int y)
+        static Dictionary<Coords, Coords[]> neighborCache = new Dictionary<Coords, Coords[]>();
+        static void primeNeighborCache()
         {
-            yield return (x - 1, y + 1);
-            yield return (x, y + 1);
-            yield return (x + 1, y + 1);
-            
-            yield return (x - 1, y);
-            yield return (x + 1, y);
+            for(int x = 0; x < Simulation.BoardDimensions; x++)
+                for (int y = 0; y < Simulation.BoardDimensions; y++)
+                {
+                    neighborCache.Add(new Coords(x, y), neighborsFor(x, y));
+                }
 
-            yield return (x - 1, y - 1);
-            yield return (x, y - 1);
-            yield return (x + 1, y - 1);
-        }
-        private int NeighborsSatisfying(int x, int y, Func<int,int,bool> test)
-        {
-            return neighbors(x, y).Count(c => test(c.Item1, c.Item2));
         }
 
-        private IEnumerable<(int, int)> emptyNeighbors(int x, int y)
+        static Coords[] neighborsFor(int x, int y)
         {
-            return neighbors(x, y).Where((coord) => AvailableForNode(coord.Item1, coord.Item2));
+            return new Coords[] {
+                new Coords(x - 1, y + 1),
+                new Coords(x, y + 1),
+                new Coords(x + 1, y + 1),
+
+                new Coords(x - 1, y),
+                new Coords(x + 1, y),
+
+                new Coords(x - 1, y - 1),
+                new Coords(x, y - 1),
+                new Coords(x + 1, y - 1)
+            };
+        }
+
+        public Coords[] neighbors(Coords coord)
+        {
+            return neighborCache[coord];
+        }
+
+        private int NeighborsSatisfying(Coords coord, Func<Coords,bool> test)
+        {
+            int count = 0;
+            foreach(var c in neighbors(coord))
+            {
+                if(test(c))
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private IEnumerable<Coords> emptyNeighbors(Coords coord)
+        {
+            return neighbors(coord).Where((coord) => AvailableForNode(coord.X, coord.Y));
         }
 
         private double DistanceFromCenter(int x, int y)
@@ -275,9 +306,9 @@ namespace evolve
                 SensorType.DistanceFromSouth => node.Location.Y / (double) Dimension,
                 SensorType.DistanceFromWest => 1.0 - node.Location.X / (double) Dimension,
                 SensorType.DistanceFromEast => node.Location.X / (double) Dimension,
-                SensorType.LocalPopulation => NeighborsSatisfying(node.Location.X, node.Location.Y, (x,y) => OnBoard(x, y) && HasNode(x, y)) / 8.0,
+                SensorType.LocalPopulation => NeighborsSatisfying(node.Location, (coord) => OnBoard(coord.X, coord.Y) && HasNode(coord.X, coord.Y)) / 8.0,
                 SensorType.DistanceFromCenter => DistanceFromCenter(node.Location.X, node.Location.Y),
-                SensorType.Blocked => NeighborsSatisfying(node.Location.X, node.Location.Y, (x,y) => !AvailableForNode(x, y)) / 8.0,
+                SensorType.Blocked => NeighborsSatisfying(node.Location, (coord) => !AvailableForNode(coord.X, coord.Y)) / 8.0,
                 _ => throw new NotSupportedException("Invalid SensorType")
             };
         }

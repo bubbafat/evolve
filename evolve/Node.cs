@@ -54,49 +54,50 @@ namespace evolve
 
         private void UpdateDesires()
         {
-            var actions = _genome.GetActions();
-
-            foreach (var action in actions)
+            foreach (var gene in _genome.Genes)
             {
-                double weight = action.Weight;
-
-                switch (action.Type)
+                if (gene.Sink is Action action)
                 {
-                    case ActionType.MoveNorth:
-                        Desire.MoveY += weight;
-                        break;
-                    case ActionType.MoveSouth:
-                        Desire.MoveY -= weight;
-                        break;
-                    case ActionType.MoveEast:
-                        Desire.MoveX += weight;
-                        break;
-                    case ActionType.MoveWest:
-                        Desire.MoveX -= weight;
-                        break;
-                    case ActionType.StayPut:
-                        Desire.StayPut += weight;
-                        break;
-                    case ActionType.MoveRandom:
-                        MoveRandom(weight);
-                        break;
-                    case ActionType.MoveToCenterX:
-                        MoveToCenter(true, false, weight);
-                        break;
-                    case ActionType.MoveToCenterY:
-                        MoveToCenter(false, true, weight);
-                        break;
-                    case ActionType.Bully:
-                        Desire.Bully += weight;
-                        break;
-                    case ActionType.Kill:
-                        Desire.Kill += weight;
-                        break;
-                    case ActionType.Defend:
-                        Desire.Defend += weight;
-                        break;
-                    default:
-                        throw new InvalidOperationException($"Unknown action: {action.Type}");
+                    double weight = action.Weight;
+
+                    switch (action.Type)
+                    {
+                        case ActionType.MoveNorth:
+                            Desire.MoveY += weight;
+                            break;
+                        case ActionType.MoveSouth:
+                            Desire.MoveY -= weight;
+                            break;
+                        case ActionType.MoveEast:
+                            Desire.MoveX += weight;
+                            break;
+                        case ActionType.MoveWest:
+                            Desire.MoveX -= weight;
+                            break;
+                        case ActionType.StayPut:
+                            Desire.StayPut += weight;
+                            break;
+                        case ActionType.MoveRandom:
+                            MoveRandom(weight);
+                            break;
+                        case ActionType.MoveToCenterX:
+                            MoveToCenter(true, false, weight);
+                            break;
+                        case ActionType.MoveToCenterY:
+                            MoveToCenter(false, true, weight);
+                            break;
+                        case ActionType.Bully:
+                            Desire.Bully += weight;
+                            break;
+                        case ActionType.Kill:
+                            Desire.Kill += weight;
+                            break;
+                        case ActionType.Defend:
+                            Desire.Defend += weight;
+                            break;
+                        default:
+                            throw new InvalidOperationException($"Unknown action: {action.Type}");
+                    }
                 }
             }
         }

@@ -1,27 +1,26 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace evolve
 {
-    public class Coords : IComparable<Coords>
+    public struct Coords : IComparable<Coords>
     {
         public Coords(int x, int y)
         {
             X = x;
             Y = y;
+
+            int hash = 23;
+            hash = hash * 31 + X;
+            _hashCode = hash * 31 + Y;
         }
 
-        public int X;
-        public int Y;
+        public readonly int X;
+        public readonly int Y;
+        private readonly int _hashCode;
 
         public override int GetHashCode()
         {
-            int hash = 23;
-            hash = hash * 31 + X;
-            return hash * 31 + Y;   
+            return _hashCode;
         }
 
         public override string ToString()
@@ -41,14 +40,19 @@ namespace evolve
 
         public int CompareTo(Coords other)
         {
-            if (other == null)
+            if (X < other.X)
                 return -1;
 
-            int xcomp = X.CompareTo(other.X);
-            if (xcomp != 0)
-                return xcomp;
+            if (X > other.X)
+                return 1;
 
-            return Y.CompareTo(other.Y);
+            if (Y < other.Y)
+                return -1;
+
+            if (Y > other.Y)
+                return 1;
+
+            return 0;
         }
     }
 }

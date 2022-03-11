@@ -132,7 +132,8 @@ namespace evolvecli
 
         private void Step()
         {
-            _world.Nodes.AsParallel().ForAll(n => n.Reset());
+            foreach(var node in _world.Nodes) node.Reset();
+
             _world.Nodes.AsParallel().ForAll(n => n.Evaluate());
             _world.Nodes.AsParallel().ForAll(n => n.Execute());
             

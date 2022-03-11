@@ -33,9 +33,6 @@ namespace evolvecli
                 Simulator sim = new Simulator(world, board);
                 sim.Run();
             }
-
-            Console.WriteLine("Hit enter to continue");
-            Console.ReadLine();
         }
     }
 }
