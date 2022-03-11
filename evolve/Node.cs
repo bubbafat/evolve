@@ -56,10 +56,16 @@ namespace evolve
 
         private void UpdateDesires()
         {
-            var actions = _genome.GetActions();
+            //var actions = _genome.GetActions();
 
-            foreach (var action in actions)
+            foreach (var gene in _genome._genes)
             {
+                Action? action = gene.Sink as Action;
+                if (action == null)
+                {
+                    continue;
+                }
+
                 double weight = action.Weight;
 
                 switch (action.Type)

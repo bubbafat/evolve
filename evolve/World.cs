@@ -9,16 +9,18 @@ namespace evolve
     {
         private readonly Node?[,] _grid;
         private readonly bool[,] _blocks;
-        private readonly List<Node> _nodes = new List<Node>();
+        private readonly Node?[] _nodeCache;
 
         private readonly ConcurrentQueue<Move> _moveQueue;
 
-        public World(int dimensions)
+        public World(int dimensions, int nodes)
         {
             Dimension = dimensions;
             _grid = new Node[Dimension, Dimension];
             _blocks = new bool[Dimension, Dimension];
             _moveQueue = new ConcurrentQueue<Move>();
+            _nodeCache = new Node[nodes];
+            primeCache();
         }
 
         private class Move
@@ -39,20 +41,41 @@ namespace evolve
             {
                 throw new NotSupportedException();
             }
+
+            populateNodeCache();
         }
 
         public void EndStep()
         {
             while(!_moveQueue.IsEmpty)
             {
-                if(_moveQueue.TryDequeue(out Move action))
+                if(_moveQueue.TryDequeue(out var action))
                 {
                     PerformNodeMove(action.Node, action.Direction);
                 }
             }
+
+            populateNodeCache();
+        }
+
+        private void populateNodeCache()
+        {
+            for(int i = 0; i < _nodeCache.Length; i++)
+            {
+                _nodeCache[i] = null;
+            }
+
+            int index = 0;
+            foreach (Node? node in _grid)
+            {
+                if (node != null)
+                {
+                    _nodeCache[index++] = node;
+                }
+            }
         }
         
-        public IEnumerable<Node> Nodes => _nodes;
+        public IEnumerable<Node> Nodes => _nodeCache;
 
         public int Dimension { get; }
 
@@ -141,16 +164,11 @@ namespace evolve
             
             _grid[x, y] = null;
             node.Alive = false;
-            _nodes.RemoveAll(n => n.Id == node.Id);
         }
-        private void PerformNodeMove(Node node, Direction direction)
+
+        (int x, int y) getDirection(Direction direction)
         {
-            if (!node.Alive)
-            {
-                return;
-            }
-            
-            var (dirX, dirY) = direction switch
+            return direction switch
             {
                 Direction.North => (0, 1),
                 Direction.South => (0, -1),
@@ -158,53 +176,77 @@ namespace evolve
                 Direction.West => (-1, 0),
                 _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, null)
             };
+        }
+
+        private void beBully(Node node, int x, int y)
+        {
+            if (emptyNeighbors(x, y).ToList().TryGetRandom(out (int, int) location))
+            {
+                // push the blocking node to one of it's empty neighbors
+                // freeing the slot needed for the node to move to
+                var n = _grid[x, y];
+                _grid[location.Item1, location.Item2] = _grid[x, y];
+                _grid[x, y] = null;
+                (n!.X, n!.Y) = (location.Item1, location.Item2);
+            }
+            else
+            {
+                // we can't push so do a swap - no subsequent move is needed
+                SwapNodes(x, y, node.X, node.Y);
+                return;
+            }
+        }
+
+        private bool beKillerAndLive(Node node, int x, int y)
+        {
+            if (Do(_grid[x, y]!.Desire.Defend))
+            {
+                // the killer picked the wrong victim
+                KillAt(node.X, node.Y);
+                return false;
+            }
+
+            // kills and frees up the spot for the subsequent move
+            KillAt(x, y);
+            return true;
+        }
+        private void PerformNodeMove(Node node, Direction direction)
+        {
+            if (!node.Alive)
+            {
+                return;
+            }
+
+            var (dirX, dirY) = getDirection(direction);
 
             int x = node.X + dirX;
             int y = node.Y + dirY;
             
             if (OnBoard(x, y) && !IsWall(x, y))
             {
-                // a bully will make the other node swap locations with them
-                if (HasNode(x, y) && Do(node.Desire.Bully) && !Do(_grid[x,y]!.Desire.Defend))
-                {
-                    if (emptyNeighbors(x, y).ToList().TryGetRandom(out (int, int) location))
-                    {
-                        // push the blocking node to one of it's empty neighbors
-                        // freeing the slot needed for the node to move to
-                        var n = _grid[x, y];
-                        _grid[location.Item1, location.Item2] = _grid[x, y];
-                        _grid[x, y] = null;
-                        (n!.X, n!.Y) = (location.Item1, location.Item2);
-                    }
-                    else
-                    {
-                        // we can't push so do a swap - no subsequent move is needed
-                        SwapNodes(x, y, node.X, node.Y);
-                        return;
-                    }
-                }
-                
-                // a killer will kill the other node (and a killer bully will bully first)
-                // unless the node is defensive
-                if (HasNode(x, y) && Do(node.Desire.Kill))
-                {
-                    if (Do(_grid[x, y]!.Desire.Defend))
-                    {
-                        // the killer picked the wrong victim
-                        KillAt(node.X, node.Y);
-                        return;
-                    }
-
-                    // kills and frees up the spot for the subsequent move
-                    KillAt(x, y);
-                }
-
                 if (!HasNode(x, y))
                 {
                     _grid[node.X, node.Y] = null;
                     _grid[x, y] = node;
                     node.X = x;
                     node.Y = y;
+                }
+
+                // a bully will make the other node swap locations with them
+                if (Do(node.Desire.Bully) && !Do(_grid[x,y]!.Desire.Defend))
+                {
+                    beBully(node, x, y);
+                    return;
+                }
+                
+                // a killer will kill the other node (and a killer bully will bully first)
+                // unless the node is defensive
+                if (Do(node.Desire.Kill))
+                {
+                    if(!beKillerAndLive(node, x, y))
+                    {
+                        return;
+                    }
                 }
             }
         }
@@ -218,7 +260,6 @@ namespace evolve
         {
             (node.X, node.Y) = RandomEmptyLocation();
             _grid[node.X, node.Y] = node;
-            _nodes.Add(node);
         }
 
         public void AddAtRandom(IEnumerable<Node> nodes)
@@ -232,10 +273,9 @@ namespace evolve
         private void RemoveNode(Node node)
         {
             _grid[node.X, node.Y] = null;
-            _nodes.RemoveAll(n => n.Id == node.Id);
         }
 
-        private ConcurrentDictionary<(int, int), (int, int)[]> neighborCache = new ConcurrentDictionary<(int,int), (int,int)[]>();
+        private Dictionary<(int, int), (int, int)[]> neighborCache = new Dictionary<(int,int), (int,int)[]>();
         (int, int)[] neighborsGenerator(int x, int y)
         {
             return new []
@@ -253,15 +293,31 @@ namespace evolve
             };
         }
 
-        (int, int)[] validNeighbors(int x, int y)
+        readonly object primeLock = new object();
+        void primeCache()
         {
-            if (!neighborCache.ContainsKey((x, y)))
+            if (neighborCache.Count == 0)
             {
-                neighborCache.TryAdd((x, y), neighborsGenerator(x, y).Where(n => OnBoard(n.Item1, n.Item2) && !IsWall(n.Item1, n.Item2)).ToArray());
+                lock (primeLock)
+                {
+                    if (neighborCache.Count == 0)
+                    {
+                        Console.WriteLine("Priming cache");
+                        for (int x = 0; x < Dimension; x++)
+                        {
+                            for (int y = 0; y < Dimension; y++)
+                            {
+                                neighborCache.Add((x, y), neighborsGenerator(x, y).Where(n => OnBoard(n.Item1, n.Item2) && !IsWall(n.Item1, n.Item2)).ToArray());
+                            }
+                        }
+                    }
+                }
             }
+        }
 
-            neighborCache.TryGetValue((x, y), out var result);
-            return result;
+        (int, int)[]? validNeighbors(int x, int y)
+        {
+            return neighborCache[(x, y)];
         }
 
         private int ValidNeighborsSatisfying(int x, int y, Func<int,int,bool> test)
@@ -298,15 +354,20 @@ namespace evolve
             };
         }
 
-        public int RemoveIf(Predicate<Node> filter)
+        public void RemoveIf(Predicate<Node> filter)
         {
-            var toRemove = _nodes.Where(n => filter(n)).ToList();
-            foreach (Node n in toRemove)
+            foreach (Node? n in _grid)
             {
-                RemoveNode(n);
+                if (n != null)
+                {
+                    if (filter(n))
+                    {
+                        RemoveNode(n);
+                    }
+                }
             }
 
-            return toRemove.Count;
+            populateNodeCache();
         }
     }
 }

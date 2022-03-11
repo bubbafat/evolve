@@ -61,8 +61,13 @@ namespace evolve
             Sink.Reset();
         }
 
-        public int CompareTo(Gene other)
+        public int CompareTo(Gene? other)
         {
+            if(other == null)
+            {
+                return -1;
+            }
+
             return SortValue().CompareTo(other.SortValue());
         }
 

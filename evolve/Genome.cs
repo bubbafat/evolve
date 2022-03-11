@@ -6,16 +6,17 @@ namespace evolve
 {
     public class Genome
     {
-        private readonly List<Gene> _genes;
+        internal readonly Gene[] _genes;
 
         private Genome(int genes)
             : this(NetworkBuilder.CreateRandom(genes))
         {
         }
 
-        private Genome(IEnumerable<Gene> genes)
+        private Genome(Gene[] genes)
         {
-            _genes = genes.ToList();
+            _genes = new Gene[genes.Length];
+            genes.CopyTo(_genes, 0);
         }
 
         public static Genome CreateRandom(int genes)
@@ -37,15 +38,18 @@ namespace evolve
         {
             var genes = NetworkBuilder.CreateFromExisting(
                 _genes.Concat(other._genes).ToList());
-                
-            var mutated = genes.Select(g => g.Mutate());
+
+            var mutated = genes.Select(g => g.Mutate()).ToArray();
             
             return new Genome(mutated);
         }
 
         public void Reset()
         {
-            _genes.ForEach(g => g.Reset());
+            foreach(var g in _genes)
+            {
+                g.Reset();
+            }
         }
 
         public string Description()

@@ -64,7 +64,7 @@ namespace evolve
             }
             
             int innerIndex = RNG.Int() % Simulation.InnerNeurons;
-            if (!_inners.TryGetValue(innerIndex, out InnerNeuron neuron))
+            if (!_inners.TryGetValue(innerIndex, out var neuron))
             {
                 neuron = new InnerNeuron(RNG.Double());
                 _inners.Add(innerIndex, neuron);
@@ -99,7 +99,7 @@ namespace evolve
 
         private Sensor CachedSensor(SensorType type)
         {
-            if (!_sensors.TryGetValue(type, out Sensor action))
+            if (!_sensors.TryGetValue(type, out var action))
             {
                 action = new Sensor(type);
                 _sensors.Add(type, action);
@@ -110,7 +110,7 @@ namespace evolve
 
         private Action CachedAction(ActionType type)
         {
-            if (!_actions.TryGetValue(type, out Action action))
+            if (!_actions.TryGetValue(type, out var action))
             {
                 action = new Action(type);
                 _actions.Add(type, action);
@@ -277,8 +277,7 @@ namespace evolve
 
         private static NetworkBuilder getNetworkBuilder()
         {
-            NetworkBuilder nb;
-            if (!_builders.TryPop(out nb))
+            if (!_builders.TryPop(out var nb))
             {
                 nb = new NetworkBuilder();
             }
@@ -315,15 +314,15 @@ namespace evolve
             return result;
         }
 
-        public static IEnumerable<Gene> CreateRandom(int connections)
+        public static Gene[] CreateRandom(int connections)
         {
             var nb = getNetworkBuilder();
 
             var result = nb.createRandom(connections);
             
             returnNetworkBuilder(nb);
-            
-            return result;
+
+            return result.ToArray();
         }
     }
 }

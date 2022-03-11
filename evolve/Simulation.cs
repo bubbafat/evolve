@@ -5,18 +5,18 @@ namespace evolve
     public static class Simulation
     {
         public const int TotalNodes = 1000;
-        public const int Generations = 1000;
+        public const int Generations = 5000;
         public const int StepsPerGeneration = FPS * 10;
-        public const double SuccessThreshold = 0.98;
+        public const double SuccessThreshold = 0.90;
         public const int BoardDimensions = 128;
-        public const int GenesPerGenome = 2;
-        public const int InnerNeurons = 1;
+        public const int GenesPerGenome = 16;
+        public const int InnerNeurons = 5;
         public const double MutationChance = 2.0 / TotalNodes / GenesPerGenome;
         public const bool AllowKillers = false;
         public const bool AllowDefense = false;
         public const bool AllowBullies = true;
 
-        private const int RenderOnMultiple = 100;
+        private const int RenderOnMultiple = 500;
         private const int FPS = 30;
 
         public static bool WinThresholdExceeded = false;
