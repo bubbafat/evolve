@@ -9,8 +9,8 @@ namespace evolve
         public const int StepsPerGeneration = FPS * 10;
         public const double SuccessThreshold = 0.95;
         public const int BoardDimensions = 128;
-        public const int GenesPerGenome = 2;
-        public const int InnerNeurons = 1;
+        public const int GenesPerGenome = 6;
+        public const int InnerNeurons = 3;
         public const double MutationChance = 1d / TotalNodes; 
         public const bool AllowKillers = false;
         public const bool AllowBullies = true;

@@ -277,7 +277,7 @@ namespace evolve
                 SensorType.DistanceFromEast => node.X / (double) Dimension,
                 SensorType.LocalPopulation => NeighborsSatisfying(node.X, node.Y, (x,y) => OnBoard(x, y) && HasNode(x, y)) / 8.0,
                 SensorType.DistanceFromCenter => DistanceFromCenter(node.X, node.Y),
-                SensorType.Blocked => NeighborsSatisfying(node.X, node.Y, (x,y) => !AvailableForNode(node.X, node.Y)) / 8.0,
+                SensorType.Blocked => NeighborsSatisfying(node.X, node.Y, (x,y) => !AvailableForNode(x, y)) / 8.0,
                 _ => throw new NotSupportedException("Invalid SensorType")
             };
         }

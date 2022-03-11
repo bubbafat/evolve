@@ -12,6 +12,7 @@ namespace evolvecli
     {
         private readonly World _world;
         private readonly Board _board;
+        private readonly List<long> _elapsed = new List<long>();
 
         public Simulator(World world, Board board)
         {
@@ -22,6 +23,7 @@ namespace evolvecli
         private void endGeneration()
         {
             Console.WriteLine($"Step times: {StepTimer.ElapsedMilliseconds}");
+            _elapsed.Add(StepTimer.ElapsedMilliseconds);
             
             StepTimer.Reset();
         }
@@ -63,7 +65,7 @@ namespace evolvecli
                 
                 if (Simulation.WinThresholdExceeded)
                 {
-                    return;
+                    break;
                 }
 
                 var survivors = _world.Nodes.ToList();
@@ -99,6 +101,9 @@ namespace evolvecli
                 
                 endGeneration();
             }
+
+            _elapsed.Sort();
+            Console.WriteLine($"Generation average: {(int)_elapsed.Average()}, Median: {_elapsed[_elapsed.Count / 2]}, Min: {_elapsed.First()}, Max: {_elapsed.Last()}");
         }
 
         private IEnumerable<Node> reproduce(List<Node> survivers)
